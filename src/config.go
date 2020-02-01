@@ -31,8 +31,9 @@ type PulsarOpsCfg struct {
 
 // TopicCfg is topic configuration
 type TopicCfg struct {
-	PulsarURL string `json:"pulsarUrl"`
-	TopicName string `json:"topicName"`
+	LatencyBudgetMs int    `json:"latencyBudgetMs"`
+	PulsarURL       string `json:"pulsarUrl"`
+	TopicName       string `json:"topicName"`
 }
 
 // PulsarPerfCfg is configuration to monitor Pulsar pub sub latency

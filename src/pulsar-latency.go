@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	latencyBudget = 200 * time.Millisecond
+	latencyBudget = 2400 // in Millisecond integer, will convert to time.Duration in evaluation
 	failedLatency = 100 * time.Second
 )
 
@@ -22,7 +22,6 @@ var consumers = make(map[string]pulsar.Consumer)
 
 // PubSubLatency the latency including successful produce and consume of a message
 func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
-	log.Println(tokenStr, uri, topicName)
 	// uri is in the form of pulsar+ssl://useast1.gcp.kafkaesque.io:6651
 	cluster := strings.Split(uri, ":")[1]
 
@@ -135,6 +134,7 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 		Payload: []byte(payloadStr),
 	}
 
+	sentTime := time.Now()
 	// Attempt to send the message asynchronously and handle the response
 	producer.SendAsync(ctx, &asyncMsg, func(messageId pulsar.MessageID, msg *pulsar.ProducerMessage, err error) {
 		if err != nil {
@@ -143,7 +143,6 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 			// report error and exit
 			errorChan <- errors.New(errMsg)
 		}
-		sentTime := time.Now()
 		timeCounter <- sentTime
 
 		log.Println("successfully published ", string(msg.Payload), sentTime)
@@ -163,7 +162,8 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 func MeasureLatency() {
 	token := AssignString(GetConfig().PulsarPerfConfig.Token, GetConfig().PulsarOpsConfig.MasterToken)
 	for _, cluster := range GetConfig().PulsarPerfConfig.TopicCfgs {
-		log.Println(cluster.PulsarURL, cluster.TopicName)
+		expectedLatency := TimeDuration(cluster.LatencyBudgetMs, latencyBudget, time.Millisecond)
+		log.Printf("test cluster %s on topic %s with latency budget %v\n", cluster.PulsarURL, cluster.TopicName, expectedLatency)
 		latency, err := PubSubLatency(token, cluster.PulsarURL, cluster.TopicName)
 
 		// uri is in the form of pulsar+ssl://useast1.gcp.kafkaesque.io:6651
@@ -171,9 +171,9 @@ func MeasureLatency() {
 		log.Printf("cluster %s has message latency %v", clusterName, latency)
 		if err != nil {
 			Alert(fmt.Sprintf("cluster %s Pulsar error: %v", clusterName, err))
-		} else if latency > latencyBudget {
-			Alert(fmt.Sprintf("cluster %s message latency %v over budget %v",
-				clusterName, latency, latencyBudget))
+		} else if latency > expectedLatency {
+			Alert(fmt.Sprintf("cluster %s message latency %v over the budget %v",
+				clusterName, latency, expectedLatency))
 		}
 	}
 }

@@ -165,11 +165,11 @@ func parseLine(line string) (key string, value string, err error) {
 	return
 }
 
-// Interval evaluate the run interval with the guard default value
-func Interval(configV, defaultV int) time.Duration {
+// TimeDuration evaluate the run interval with the guard default value
+func TimeDuration(configV, defaultV int, timeUnit time.Duration) time.Duration {
 	if configV == 0 {
-		return time.Duration(defaultV) * time.Second
+		return time.Duration(defaultV) * timeUnit
 	}
-	return time.Duration(configV) * time.Second
+	return time.Duration(configV) * timeUnit
 
 }
