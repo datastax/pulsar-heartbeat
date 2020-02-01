@@ -23,8 +23,6 @@ var consumers = make(map[string]pulsar.Consumer)
 // PubSubLatency the latency including successful produce and consume of a message
 func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 	// uri is in the form of pulsar+ssl://useast1.gcp.kafkaesque.io:6651
-	cluster := strings.Split(uri, ":")[1]
-
 	client, ok := clients[uri]
 	if !ok {
 
@@ -103,7 +101,7 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 		for loop {
 			msg, err := consumer.Receive(cCtx)
 			if err != nil {
-				errMsg := fmt.Sprintf("cluster %s consumer Receive() error: %v", cluster, err)
+				errMsg := fmt.Sprintf("consumer Receive() error: %v", err)
 				log.Println(errMsg)
 				errorChan <- errors.New(errMsg)
 			}
@@ -114,10 +112,9 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 				case sentTime := <-timeCounter:
 					completeChan <- time.Now().Sub(sentTime)
 
-				default:
+				case <-time.Tick(5 * time.Second):
 					// this is impossible case that producer must have sent signal
-					errMsg := fmt.Sprintf("cluster %s consumer received message, but timed out on producer report time: %v", cluster, err)
-					log.Println(errMsg)
+					errMsg := fmt.Sprintf("consumer received message, but timed out on producer report time")
 					errorChan <- errors.New(errMsg)
 				}
 			}
@@ -138,7 +135,7 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 	// Attempt to send the message asynchronously and handle the response
 	producer.SendAsync(ctx, &asyncMsg, func(messageId pulsar.MessageID, msg *pulsar.ProducerMessage, err error) {
 		if err != nil {
-			errMsg := fmt.Sprintf("cluster %s could not instantiate Pulsar client: %v", cluster, err)
+			errMsg := fmt.Sprintf("fail to instantiate Pulsar client: %v", err)
 			log.Println(errMsg)
 			// report error and exit
 			errorChan <- errors.New(errMsg)
