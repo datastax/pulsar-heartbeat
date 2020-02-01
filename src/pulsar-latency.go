@@ -68,6 +68,7 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 	if err != nil {
 		return failedLatency, err
 	}
+	defer consumer.Close()
 
 	// the original sent time to notify the receiver for latency calculation
 	timeCounter := make(chan time.Time, 1)

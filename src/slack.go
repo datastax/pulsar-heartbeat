@@ -41,6 +41,9 @@ func SendSlackNotification(webhookURL string, msg SlackMessage) error {
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return err
 	}

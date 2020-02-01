@@ -1,4 +1,4 @@
-module github.com/p2
+module gitlab.com/operation-monitor
 
 go 1.13
 

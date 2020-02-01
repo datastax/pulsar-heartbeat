@@ -28,6 +28,9 @@ func PulsarAdminTenant(clusterURL, token string) (int, error) {
 	req.Header.Add("Authorization", "Bearer "+token)
 
 	resp, err := client.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return 0, err
 	}
@@ -36,7 +39,6 @@ func PulsarAdminTenant(clusterURL, token string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
 
 	var tenants []string
 

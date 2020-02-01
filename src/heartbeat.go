@@ -40,6 +40,9 @@ func HeartBeatToOpsGenie(genieKey string) error {
 	req.Header.Set("Authorization", genieKey)
 
 	resp, err := client.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		log.Println(err)
 		Alert(fmt.Sprintf("Opsgenie returns error %v", err))
@@ -52,7 +55,6 @@ func HeartBeatToOpsGenie(genieKey string) error {
 		Alert(msg)
 		return errors.New(msg)
 	}
-	defer resp.Body.Close()
 
 	return nil
 }
