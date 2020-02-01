@@ -4,7 +4,6 @@ import (
 	"flag"
 	"log"
 	"os"
-	"time"
 )
 
 var cfgFile = flag.String("config", "../config/runtime.json", "config file for monitoring")
@@ -17,9 +16,9 @@ func main() {
 
 	exit := make(chan bool)
 
-	RunInterval(PulsarTenants, 60*time.Second)
-	RunInterval(StartHeartBeat, 150*time.Second)
-	RunInterval(MeasureLatency, 90*time.Second)
+	RunInterval(PulsarTenants, Interval(GetConfig().PulsarOpsConfig.IntervalSeconds, 120))
+	RunInterval(StartHeartBeat, Interval(GetConfig().OpsGenieConfig.IntervalSeconds, 240))
+	RunInterval(MeasureLatency, Interval(GetConfig().PulsarPerfConfig.IntervalSeconds, 300))
 
 	for {
 		select {

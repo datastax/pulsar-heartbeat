@@ -18,13 +18,15 @@ type SlackCfg struct {
 
 // OpsGenieCfg is opsGenie key
 type OpsGenieCfg struct {
-	Key string `json:"key"`
+	Key             string `json:"key"`
+	IntervalSeconds int    `json:"intervalSeconds"`
 }
 
 // PulsarOpsCfg is for monitor a list of Pulsar cluster
 type PulsarOpsCfg struct {
-	MasterToken string   `json:"masterToken"`
-	Clusters    []string `json:"clusters"`
+	MasterToken     string   `json:"masterToken"`
+	Clusters        []string `json:"clusters"`
+	IntervalSeconds int      `json:"intervalSeconds"`
 }
 
 // TopicCfg is topic configuration
@@ -35,9 +37,10 @@ type TopicCfg struct {
 
 // PulsarPerfCfg is configuration to monitor Pulsar pub sub latency
 type PulsarPerfCfg struct {
-	Token      string     `json:"token"`
-	TrustStore string     `json:"trustStore"`
-	TopicCfgs  []TopicCfg `json:"topicCfgs"`
+	Token           string     `json:"token"`
+	TrustStore      string     `json:"trustStore"`
+	IntervalSeconds int        `json:"intervalSeconds"`
+	TopicCfgs       []TopicCfg `json:"topicCfgs"`
 }
 
 // Configuration - this server's configuration

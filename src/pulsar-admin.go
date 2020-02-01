@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -60,9 +61,10 @@ func PulsarTenants() {
 		clusterURL := "https://kafkaesque.io/api/v1/" + cluster + "/tenants/"
 		tenantSize, err := PulsarAdminTenant(clusterURL, token)
 		if err != nil {
-			Alert("failed to contact " + cluster)
+			errMsg := fmt.Sprintf("fail to connect cluster %s err %v", cluster, err)
+			Alert(errMsg)
 		} else if tenantSize == 0 {
-			Alert(cluster + " tenant size is 0")
+			Alert(cluster + " has incorrect number of tenants 0")
 		}
 	}
 }

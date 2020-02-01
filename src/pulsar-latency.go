@@ -92,6 +92,9 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 	// notify the main thread with the latency to complete the exit
 	completeChan := make(chan time.Duration, 1)
 
+	// error report channel
+	errorChan := make(chan error, 1)
+
 	payloadStr := "measure-latency123" + time.Now().Format(time.UnixDate)
 
 	go func() {
@@ -101,8 +104,9 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 		for loop {
 			msg, err := consumer.Receive(cCtx)
 			if err != nil {
-				log.Printf("cluster %s consumer receive error: %v\n", cluster, err)
-				completeChan <- failedLatency
+				errMsg := fmt.Sprintf("cluster %s consumer Receive() error: %v", cluster, err)
+				log.Println(errMsg)
+				errorChan <- errors.New(errMsg)
 			}
 			receivedStr := string(msg.Payload())
 			if payloadStr == receivedStr {
@@ -113,8 +117,9 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 
 				default:
 					// this is impossible case that producer must have sent signal
-					log.Printf("cluster %s consumer receive message timeout: %v\n", cluster, err)
-					completeChan <- failedLatency
+					errMsg := fmt.Sprintf("cluster %s consumer received message, but timed out on producer report time: %v", cluster, err)
+					log.Println(errMsg)
+					errorChan <- errors.New(errMsg)
 				}
 			}
 			consumer.Ack(msg)
@@ -133,10 +138,10 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 	// Attempt to send the message asynchronously and handle the response
 	producer.SendAsync(ctx, &asyncMsg, func(messageId pulsar.MessageID, msg *pulsar.ProducerMessage, err error) {
 		if err != nil {
-			log.Printf("cluster %s could not instantiate Pulsar client: %v\n", cluster, err)
-
-			// this forces the main thread to exit
-			completeChan <- failedLatency
+			errMsg := fmt.Sprintf("cluster %s could not instantiate Pulsar client: %v", cluster, err)
+			log.Println(errMsg)
+			// report error and exit
+			errorChan <- errors.New(errMsg)
 		}
 		sentTime := time.Now()
 		timeCounter <- sentTime
@@ -147,6 +152,8 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 	select {
 	case receiverLatency := <-completeChan:
 		return receiverLatency, nil
+	case reportedErr := <-errorChan:
+		return failedLatency, reportedErr
 	case <-time.Tick(15 * time.Second):
 		return failedLatency, errors.New("latency measure not received after timeout")
 	}
@@ -163,7 +170,7 @@ func MeasureLatency() {
 		clusterName := strings.Split(cluster.PulsarURL, ":")[1]
 		log.Printf("cluster %s has message latency %v", clusterName, latency)
 		if err != nil {
-			Alert(fmt.Sprintf("cluster %s consumer receive error: %v", clusterName, err))
+			Alert(fmt.Sprintf("cluster %s Pulsar error: %v", clusterName, err))
 		} else if latency > latencyBudget {
 			Alert(fmt.Sprintf("cluster %s message latency %v over budget %v",
 				clusterName, latency, latencyBudget))

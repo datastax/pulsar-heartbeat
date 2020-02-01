@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 // ResponseErr - Error struct for Http response
@@ -162,4 +163,13 @@ func parseLine(line string) (key string, value string, err error) {
 	value = strings.Replace(value, `\\`, `\`, -1)
 	value = strings.Replace(value, "\\`", "`", -1)
 	return
+}
+
+// Interval evaluate the run interval with the guard default value
+func Interval(configV, defaultV int) time.Duration {
+	if configV == 0 {
+		return time.Duration(defaultV) * time.Second
+	}
+	return time.Duration(configV) * time.Second
+
 }
