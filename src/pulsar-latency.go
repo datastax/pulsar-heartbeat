@@ -16,35 +16,46 @@ const (
 	failedLatency = 100 * time.Second
 )
 
+var clients = make(map[string]pulsar.Client)
+var producers = make(map[string]pulsar.Producer)
+var consumers = make(map[string]pulsar.Consumer)
+
 // PubSubLatency the latency including successful produce and consume of a message
 func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 	log.Println(tokenStr, uri, topicName)
 	// uri is in the form of pulsar+ssl://useast1.gcp.kafkaesque.io:6651
 	cluster := strings.Split(uri, ":")[1]
 
-	// Configuration variables pertaining to this consumer
-	// RHEL CentOS:
-	trustStore := AssignString(GetConfig().PulsarPerfConfig.TrustStore, "/etc/ssl/certs/ca-bundle.crt")
-	// Debian Ubuntu:
-	// trustStore := '/etc/ssl/certs/ca-certificates.crt'
-	// OSX:
-	// Export the default certificates to a file, then use that file:
-	// security find-certificate -a -p /System/Library/Keychains/SystemCACertificates.keychain > ./ca-certificates.crt
-	// trust_certs='./ca-certificates.crt'
+	client, ok := clients[uri]
+	if !ok {
 
-	token := pulsar.NewAuthenticationToken(tokenStr)
+		// Configuration variables pertaining to this consumer
+		// RHEL CentOS:
+		trustStore := AssignString(GetConfig().PulsarPerfConfig.TrustStore, "/etc/ssl/certs/ca-bundle.crt")
+		// Debian Ubuntu:
+		// trustStore := '/etc/ssl/certs/ca-certificates.crt'
+		// OSX:
+		// Export the default certificates to a file, then use that file:
+		// security find-certificate -a -p /System/Library/Keychains/SystemCACertificates.keychain > ./ca-certificates.crt
+		// trust_certs='./ca-certificates.crt'
 
-	client, err := pulsar.NewClient(pulsar.ClientOptions{
-		URL:                   uri,
-		Authentication:        token,
-		TLSTrustCertsFilePath: trustStore,
-	})
+		token := pulsar.NewAuthenticationToken(tokenStr)
 
-	if err != nil {
-		return failedLatency, err
+		var err error
+		client, err = pulsar.NewClient(pulsar.ClientOptions{
+			URL:                   uri,
+			Authentication:        token,
+			TLSTrustCertsFilePath: trustStore,
+		})
+
+		if err != nil {
+			return failedLatency, err
+		}
+		clients[uri] = client
 	}
 
-	defer client.Close()
+	// it is important to close client after close of producer/consumer
+	// defer client.Close()
 
 	// Use the client to instantiate a producer
 	producer, err := client.CreateProducer(pulsar.ProducerOptions{
@@ -52,6 +63,9 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 	})
 
 	if err != nil {
+		// we guess
+		client.Close()
+		delete(clients, uri)
 		return failedLatency, err
 	}
 
@@ -66,6 +80,8 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 	})
 
 	if err != nil {
+		defer client.Close() //must defer to allow producer to be closed first
+		delete(clients, uri)
 		return failedLatency, err
 	}
 	defer consumer.Close()
