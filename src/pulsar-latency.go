@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/apache/pulsar-client-go/pulsar"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -16,9 +17,11 @@ const (
 	failedLatency = 100 * time.Second
 )
 
-var clients = make(map[string]pulsar.Client)
-var producers = make(map[string]pulsar.Producer)
-var consumers = make(map[string]pulsar.Consumer)
+var (
+	clients   = make(map[string]pulsar.Client)
+	metrics   = make(map[string]prometheus.Gauge)
+	summaries = make(map[string]prometheus.Summary)
+)
 
 // PubSubLatency the latency including successful produce and consume of a message
 func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
@@ -164,7 +167,7 @@ func MeasureLatency() {
 		latency, err := PubSubLatency(token, cluster.PulsarURL, cluster.TopicName)
 
 		// uri is in the form of pulsar+ssl://useast1.gcp.kafkaesque.io:6651
-		clusterName := strings.Split(cluster.PulsarURL, ":")[1]
+		clusterName, latencyMetricName := getNames(cluster.PulsarURL)
 		log.Printf("cluster %s has message latency %v", clusterName, latency)
 		if err != nil {
 			Alert(fmt.Sprintf("cluster %s Pulsar error: %v", clusterName, err))
@@ -172,5 +175,50 @@ func MeasureLatency() {
 			Alert(fmt.Sprintf("cluster %s message latency %v over the budget %v",
 				clusterName, latency, expectedLatency))
 		}
+		PromMetric(latencyMetricName, latency)
 	}
+}
+
+// getNames in the format for reporting and Prometheus metrics
+// Input URL pulsar+ssl://useast1.gcp.kafkaesque.io:6651
+// useast1.gcp.kafkaesque.io is for general logging and reporting
+// useast1_gcp_kafkaesque_io is expected by Premetheus
+// This is Premetheus data modelling and naming convention
+// https://prometheus.io/docs/practices/naming/
+// https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
+func getNames(url string) (string, string) {
+	name := strings.Split(url, ":")[1]
+	clusterName := strings.Replace(name, "//", "", -1)
+	metricsName := strings.Replace(clusterName, ".", "_", -1)
+	latencyName := fmt.Sprintf("pulsar_%s_msg_latency_ms", metricsName)
+	return clusterName, latencyName
+}
+
+// PromMetric expose monitoring metrics to Prometheus
+func PromMetric(name string, latency time.Duration) {
+	ms := float64(latency / time.Millisecond)
+	if promMetric, ok := metrics[name]; ok {
+		promMetric.Set(ms)
+	} else {
+		newMetric := prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: name,
+			Help: "Message produce and consume latency for the specific cluster",
+		})
+		prometheus.Register(newMetric)
+		newMetric.Set(ms)
+		metrics[name] = newMetric
+	}
+	if summary, ok := summaries[name]; ok {
+		summary.Observe(ms)
+	} else {
+		newSummary := prometheus.NewSummary(prometheus.SummaryOpts{
+			Name:       name + "_sum",
+			Help:       "Summary of produce and consume latency",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		})
+		prometheus.Register(newSummary)
+		newSummary.Observe(ms)
+		summaries[name] = newSummary
+	}
+
 }

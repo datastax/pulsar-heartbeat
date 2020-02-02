@@ -11,6 +11,6 @@ require (
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/pierrec/lz4 v2.4.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/sirupsen/logrus v1.4.2 // indirect
-	golang.org/x/sys v0.0.0-20200124204421-9fbb57f87de9 // indirect
+	github.com/prometheus/client_golang v1.4.0
+	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5 // indirect
 )

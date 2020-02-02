@@ -11,6 +11,12 @@ import (
 // it can be overwritten by env variable PULSAR_BEAM_CONFIG
 const DefaultConfigFile = "../config/pulsar_beam.json"
 
+// PrometheusCfg configures Premetheus set up
+type PrometheusCfg struct {
+	Port          string `json:"port"`
+	ExposeMetrics bool   `json:"exposeMetrics"`
+}
+
 // SlackCfg is slack key
 type SlackCfg struct {
 	AlertURL string `json:"alertUrl"`
@@ -46,6 +52,7 @@ type PulsarPerfCfg struct {
 
 // Configuration - this server's configuration
 type Configuration struct {
+	PrometheusConfig PrometheusCfg `json:"prometheusConfig"`
 	SlackConfig      SlackCfg      `json:"slackConfig"`
 	OpsGenieConfig   OpsGenieCfg   `json:"opsGenieConfig"`
 	PulsarOpsConfig  PulsarOpsCfg  `json:"pulsarOpsConfig"`
