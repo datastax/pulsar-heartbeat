@@ -1,0 +1,55 @@
+{
+    "prometheusConfig": {
+        "port": ":8080",
+        "exposeMetrics": true
+    },
+    "slackConfig": {
+        "alertUrl": "required"
+    },
+
+    "opsGenieConfig": {
+        "intervalSeconds": 60,
+        "key": "required"
+    },
+    "pulsarOpsConfig": {
+        "intervalSeconds": 30,
+        "masterToken": "required",
+        "clusters": ["uscentral1-azure","uswest2-aws","eucentral1-aws","asiaeast2-gcp","useast1-gcp","useast2-aws"]
+    },
+    "pulsarPerfConfig": {
+        "intervalSeconds": 120,
+        "token": "optional to use the masterToken",
+        "topicCfgs": [
+            {
+                "latencyBudgetMs": 360,
+                "pulsarUrl": "pulsar+ssl://useast1.gcp.kafkaesque.io:6651",
+                "topicName": "persistent://ming-luo/local-useast1-gcp/reserved-cluster-monitoring"
+            },
+            {
+                "latencyBudgetMs": 2400,
+                "pulsarUrl": "pulsar+ssl://asiaeast2.gcp.kafkaesque.io:6651",
+                "topicName": "persistent://ming-luo/local-asiaeast2-gcp/reserved-cluster-monitoring"
+            },
+            {
+                "latencyBudgetMs": 1850,
+                "pulsarUrl": "pulsar+ssl://eucentral1.aws.kafkaesque.io:6651",
+                "topicName": "persistent://ming-luo/local-eucentral1-aws/reserved-cluster-monitoring"
+            },
+            {
+                "latencyBudgetMs": 480,
+                "pulsarUrl": "pulsar+ssl://uscentral1.azure.kafkaesque.io:6651",
+                "topicName": "persistent://ming-luo/local-uscentral1-azure/reserved-cluster-monitoring"
+            },
+            {
+                "latencyBudgetMs": 480,
+                "pulsarUrl": "pulsar+ssl://uswest2.aws.kafkaesque.io:6651",
+                "topicName": "persistent://ming-luo/local-uswest2-aws/reserved-cluster-monitoring"
+            },
+            {
+                "latencyBudgetMs": 360,
+                "pulsarUrl": "pulsar+ssl://useast2.aws.kafkaesque.io:6651",
+                "topicName": "persistent://ming-luo/local-useast2-aws/reserved-cluster-monitoring"
+            }
+        ]
+    }
+}
