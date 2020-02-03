@@ -11,7 +11,7 @@
         "sites": [
             {
                 "url": "https://kafkaesque.io/plans",
-                "name": "kafkaesque_plan_latency_ms",
+                "name": "plans",
                 "intervalSeconds": 30,
                 "responseSeconds": 15,
                 "statusCode": 200,
@@ -19,7 +19,7 @@
             },
             {
                 "url": "https://kafkaesque.io/wp-login.php?action=register",
-                "name": "kafkaesque_register_latency_ms",
+                "name": "auth0_register",
                 "intervalSeconds": 20,
                 "responseSeconds": 15,
                 "statusCode": 200,

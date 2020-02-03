@@ -12,6 +12,11 @@ var (
 	summaries = make(map[string]*prometheus.SummaryVec)
 )
 
+// This is Premetheus data modelling and naming convention
+// https://prometheus.io/docs/practices/naming/
+// https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
+// TODO add regex evaluation against names [a-zA-Z_:][a-zA-Z0-9_:]*
+
 // TenantsGaugeOpt is the description for rest api tenant counts
 func TenantsGaugeOpt() prometheus.GaugeOpts {
 	return prometheus.GaugeOpts{

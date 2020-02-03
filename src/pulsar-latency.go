@@ -164,7 +164,7 @@ func MeasureLatency() {
 		latency, err := PubSubLatency(token, cluster.PulsarURL, cluster.TopicName)
 
 		// uri is in the form of pulsar+ssl://useast1.gcp.kafkaesque.io:6651
-		clusterName, metricName := getNames(cluster.PulsarURL)
+		clusterName := getNames(cluster.PulsarURL)
 		log.Printf("cluster %s has message latency %v", clusterName, latency)
 		if err != nil {
 			Alert(fmt.Sprintf("cluster %s Pulsar error: %v", clusterName, err))
@@ -172,20 +172,14 @@ func MeasureLatency() {
 			Alert(fmt.Sprintf("cluster %s message latency %v over the budget %v",
 				clusterName, latency, expectedLatency))
 		}
-		PromLatencySum(MsgLatencyGaugeOpt(), metricName, latency)
+		PromLatencySum(MsgLatencyGaugeOpt(), clusterName, latency)
 	}
 }
 
 // getNames in the format for reporting and Prometheus metrics
 // Input URL pulsar+ssl://useast1.gcp.kafkaesque.io:6651
-// useast1.gcp.kafkaesque.io is for general logging and reporting
-// useast1_gcp_kafkaesque_io is expected by Premetheus
-// This is Premetheus data modelling and naming convention
-// https://prometheus.io/docs/practices/naming/
-// https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
-func getNames(url string) (string, string) {
+func getNames(url string) string {
 	name := strings.Split(url, ":")[1]
 	clusterName := strings.Replace(name, "//", "", -1)
-	metricsName := strings.Replace(clusterName, ".", "_", -1)
-	return clusterName, metricsName
+	return clusterName
 }
