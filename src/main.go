@@ -17,8 +17,9 @@ var (
 func main() {
 
 	flag.Parse()
-	log.Println("config file ", *cfgFile)
-	ReadConfigFile(*cfgFile)
+	effectiveCfgFile := AssignString(os.Getenv("PULSAR_OPS_MONITOR_CFG"), *cfgFile)
+	log.Println("config file ", effectiveCfgFile)
+	ReadConfigFile(effectiveCfgFile)
 
 	exit := make(chan bool)
 	cfg := GetConfig()
