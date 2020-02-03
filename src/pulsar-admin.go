@@ -63,8 +63,11 @@ func PulsarTenants() {
 		if err != nil {
 			errMsg := fmt.Sprintf("fail to connect cluster %s err %v", cluster, err)
 			Alert(errMsg)
-		} else if tenantSize == 0 {
-			Alert(cluster + " has incorrect number of tenants 0")
+		} else {
+			PromGaugeInt(TenantsGaugeOpt(), cluster, tenantSize)
+			if tenantSize == 0 {
+				Alert(cluster + " has incorrect number of tenants 0")
+			}
 		}
 	}
 }
