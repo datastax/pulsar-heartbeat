@@ -7,6 +7,26 @@
         "alertUrl": "required"
     },
 
+    "sitesConfig": {
+        "sites": [
+            {
+                "url": "https://kafkaesque.io/plans",
+                "name": "plans",
+                "intervalSeconds": 30,
+                "responseSeconds": 15,
+                "statusCode": 200,
+                "retries": 3
+            },
+            {
+                "url": "https://kafkaesque.io/wp-login.php?action=register",
+                "name": "auth0_register",
+                "intervalSeconds": 20,
+                "responseSeconds": 15,
+                "statusCode": 200,
+                "retries": 3
+            }
+        ]    
+    },
     "opsGenieConfig": {
         "intervalSeconds": 60,
         "key": "required"

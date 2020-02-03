@@ -27,6 +27,7 @@ func main() {
 	RunInterval(PulsarTenants, TimeDuration(cfg.PulsarOpsConfig.IntervalSeconds, 120, time.Second))
 	RunInterval(StartHeartBeat, TimeDuration(cfg.OpsGenieConfig.IntervalSeconds, 240, time.Second))
 	RunInterval(MeasureLatency, TimeDuration(cfg.PulsarPerfConfig.IntervalSeconds, 300, time.Second))
+	MonitorSites()
 
 	if cfg.PrometheusConfig.ExposeMetrics {
 		log.Printf("start to listen to http port %s", cfg.PrometheusConfig.Port)

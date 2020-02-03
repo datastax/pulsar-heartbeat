@@ -28,6 +28,22 @@ type OpsGenieCfg struct {
 	IntervalSeconds int    `json:"intervalSeconds"`
 }
 
+// SiteCfg configures general website
+type SiteCfg struct {
+	Headers         map[string]string `json:"headers"`
+	URL             string            `json:"url"`
+	Name            string            `json:"name"`
+	IntervalSeconds int               `json:"intervalSeconds"`
+	ResponseSeconds int               `json:"responseSeconds"`
+	StatusCode      int               `json:"statusCode"`
+	Retries         int               `json:"retries"`
+}
+
+// SitesCfg configures a list of website`
+type SitesCfg struct {
+	Sites []SiteCfg `json:"sites"`
+}
+
 // PulsarOpsCfg is for monitor a list of Pulsar cluster
 type PulsarOpsCfg struct {
 	MasterToken     string   `json:"masterToken"`
@@ -57,6 +73,7 @@ type Configuration struct {
 	OpsGenieConfig   OpsGenieCfg   `json:"opsGenieConfig"`
 	PulsarOpsConfig  PulsarOpsCfg  `json:"pulsarOpsConfig"`
 	PulsarPerfConfig PulsarPerfCfg `json:"pulsarPerfConfig"`
+	SitesConfig      SitesCfg      `json:"sitesConfig"`
 }
 
 // Config - this server's configuration instance
