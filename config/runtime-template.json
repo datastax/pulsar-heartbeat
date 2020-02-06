@@ -96,9 +96,69 @@
             }
         ]
     },
+    "pulsarFunctionsConfig": {
+        "intervalSeconds": 120,
+        "masterToken": "",
+        "clusters": [
+            {
+                "name": "uscentral1-azure",
+                "triggerUrl": "https://kafkaesque.io/api/v1/uscentral1-azure/functions/ming-luo/local-uscentral1-azure/for-monitor-function/trigger",
+                "alertPolicy": {
+                    "Ceiling": 3,
+                    "MovingWindowSeconds": 15,
+                    "CeilingInMovingWindow": 5
+                }
+            },
+            {
+                "name": "uswest2-aws",
+                "triggerUrl": "https://kafkaesque.io/api/v1/uswest2-aws/functions/ming-luo/local-uswest2-aws/for-monitor-function/trigger",
+                "alertPolicy": {
+                    "Ceiling": 3,
+                    "MovingWindowSeconds": 15,
+                    "CeilingInMovingWindow": 5
+                }
+            },
+            {
+                "name": "eucentral1-aws",
+                "triggerUrl": "https://kafkaesque.io/api/v1/eucentral1-aws/functions/ming-luo/local-eucentral1-aws/for-monitor-function/trigger",
+                "alertPolicy": {
+                    "Ceiling": 3,
+                    "MovingWindowSeconds": 15,
+                    "CeilingInMovingWindow": 5
+                }
+            },
+            {
+                "name": "asiaeast2-gcp",
+                "triggerUrl": "https://kafkaesque.io/api/v1/asiaeast2-gcp/functions/ming-luo/local-asiaeast2-gcp/for-monitor-function/trigger",
+                "alertPolicy": {
+                    "Ceiling": 3,
+                    "MovingWindowSeconds": 15,
+                    "CeilingInMovingWindow": 5
+                }
+            },
+            {
+                "name": "useast1-gcp",
+                "triggerUrl": "https://kafkaesque.io/api/v1/useast1-gcp/functions/ming-luo/local-useast1-gcp/for-monitor-function/trigger",
+                "alertPolicy": {
+                    "Ceiling": 3,
+                    "MovingWindowSeconds": 15,
+                    "CeilingInMovingWindow": 5
+                }
+            },
+            {
+                "name": "useast2-aws",
+                "triggerUrl": "https://kafkaesque.io/api/v1/useast2-aws/functions/ming-luo/namespace2/for-monitor-function/trigger",
+                "alertPolicy": {
+                    "Ceiling": 3,
+                    "MovingWindowSeconds": 15,
+                    "CeilingInMovingWindow": 5
+                }
+            }
+        ]
+    },
     "pulsarPerfConfig": {
         "intervalSeconds": 120,
-        "token": "optional to use the masterToken",
+        "token": "",
         "topicCfgs": [
             {
                 "latencyBudgetMs": 360,

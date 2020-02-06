@@ -185,7 +185,7 @@ func MeasureLatency() {
 // getNames in the format for reporting and Prometheus metrics
 // Input URL pulsar+ssl://useast1.gcp.kafkaesque.io:6651
 func getNames(url string) string {
-	name := strings.Split(url, ":")[1]
+	name := strings.Split(Trim(url), ":")[1]
 	clusterName := strings.Replace(name, "//", "", -1)
 	return clusterName
 }

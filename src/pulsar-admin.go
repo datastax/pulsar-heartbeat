@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"time"
 
@@ -55,7 +54,6 @@ func PulsarAdminTenant(clusterURL, token string) (int, error) {
 func PulsarTenants() {
 	clusters := GetConfig().PulsarOpsConfig.Clusters
 	token := GetConfig().PulsarOpsConfig.MasterToken
-	log.Println(clusters)
 
 	for _, cluster := range clusters {
 		clusterURL := "https://kafkaesque.io/api/v1/" + cluster.Name + "/tenants/"

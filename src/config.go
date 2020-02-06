@@ -75,14 +75,29 @@ type PulsarPerfCfg struct {
 	TopicCfgs       []TopicCfg `json:"topicCfgs"`
 }
 
+// PulsarFuncCfg specifies the configuration of each function trigger
+type PulsarFuncCfg struct {
+	Name        string         `json:"name"` // save me some work not to parse the url
+	TriggerURL  string         `json:"triggerUrl"`
+	AlertPolicy AlertPolicyCfg `json:"alertPolicy"`
+}
+
+// PulsarFunctionsCfg configures a list of trigger functions in each cluster
+type PulsarFunctionsCfg struct {
+	MasterToken     string          `json:"masterToken"` //we can use the PulsarOpsConfig's master token
+	Clusters        []PulsarFuncCfg `json:"clusters"`
+	IntervalSeconds int             `json:"intervalSeconds"`
+}
+
 // Configuration - this server's configuration
 type Configuration struct {
-	PrometheusConfig PrometheusCfg `json:"prometheusConfig"`
-	SlackConfig      SlackCfg      `json:"slackConfig"`
-	OpsGenieConfig   OpsGenieCfg   `json:"opsGenieConfig"`
-	PulsarOpsConfig  PulsarOpsCfg  `json:"pulsarOpsConfig"`
-	PulsarPerfConfig PulsarPerfCfg `json:"pulsarPerfConfig"`
-	SitesConfig      SitesCfg      `json:"sitesConfig"`
+	PrometheusConfig      PrometheusCfg      `json:"prometheusConfig"`
+	SlackConfig           SlackCfg           `json:"slackConfig"`
+	OpsGenieConfig        OpsGenieCfg        `json:"opsGenieConfig"`
+	PulsarOpsConfig       PulsarOpsCfg       `json:"pulsarOpsConfig"`
+	PulsarPerfConfig      PulsarPerfCfg      `json:"pulsarPerfConfig"`
+	PulsarFunctionsConfig PulsarFunctionsCfg `json:"pulsarFunctionsConfig"`
+	SitesConfig           SitesCfg           `json:"sitesConfig"`
 }
 
 // AlertPolicyCfg is a set of criteria to evaluation triggers for incident alert
