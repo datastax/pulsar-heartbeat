@@ -3,6 +3,7 @@ variables:
 
 stages:
   - lint
+  - test
   - build
   - docker
 
