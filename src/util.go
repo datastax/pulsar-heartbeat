@@ -173,3 +173,13 @@ func TimeDuration(configV, defaultV int, timeUnit time.Duration) time.Duration {
 	return time.Duration(configV) * timeUnit
 
 }
+
+// StrContains check if a string is contained in an array of string
+func StrContains(strs []string, str string) bool {
+	for _, v := range strs {
+		if v == str {
+			return true
+		}
+	}
+	return false
+}

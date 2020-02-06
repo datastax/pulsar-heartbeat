@@ -14,7 +14,7 @@ var heatbeatDuration = 60 * time.Second
 
 // StartHeartBeat starts heartbeat monitoring the program by OpsGenie
 func StartHeartBeat() {
-	genieKey := GetConfig().OpsGenieConfig.Key
+	genieKey := GetConfig().OpsGenieConfig.HeartbeatKey
 	err := HeartBeatToOpsGenie(genieKey)
 	if err != nil {
 		Alert(fmt.Sprintf("OpsGenie error %v", err))
