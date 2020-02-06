@@ -58,16 +58,20 @@ func PulsarTenants() {
 	log.Println(clusters)
 
 	for _, cluster := range clusters {
-		clusterURL := "https://kafkaesque.io/api/v1/" + cluster + "/tenants/"
+		clusterURL := "https://kafkaesque.io/api/v1/" + cluster.Name + "/tenants/"
 		tenantSize, err := PulsarAdminTenant(clusterURL, token)
 		if err != nil {
-			errMsg := fmt.Sprintf("fail to connect cluster %s err %v", cluster, err)
+			errMsg := fmt.Sprintf("fail to connect cluster %s err %v", cluster.Name, err)
 			Alert(errMsg)
+			ReportIncident(cluster.Name, "persisted cluster tenants endpoint failure", errMsg, &cluster.AlertPolicy)
 		} else {
-			PromGaugeInt(TenantsGaugeOpt(), cluster, tenantSize)
+			PromGaugeInt(TenantsGaugeOpt(), cluster.Name, tenantSize)
+			ClearIncident(cluster.Name)
 			if tenantSize == 0 {
-				Alert(cluster + " has incorrect number of tenants 0")
+				Alert(fmt.Sprintf("%s has incorrect number of tenants 0", cluster.Name))
 			}
 		}
 	}
 }
+
+// TODO: add broker stats "https://kafkaesque.io/api/v1/" + cluster + "/broker-stats/load-report/"

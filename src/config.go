@@ -24,7 +24,8 @@ type SlackCfg struct {
 
 // OpsGenieCfg is opsGenie key
 type OpsGenieCfg struct {
-	Key             string `json:"key"`
+	HeartbeatKey    string `json:"heartbeatKey"`
+	AlertKey        string `json:"alertKey"`
 	IntervalSeconds int    `json:"intervalSeconds"`
 }
 
@@ -37,6 +38,7 @@ type SiteCfg struct {
 	ResponseSeconds int               `json:"responseSeconds"`
 	StatusCode      int               `json:"statusCode"`
 	Retries         int               `json:"retries"`
+	AlertPolicy     AlertPolicyCfg    `json:"alertPolicy"`
 }
 
 // SitesCfg configures a list of website`
@@ -44,18 +46,25 @@ type SitesCfg struct {
 	Sites []SiteCfg `json:"sites"`
 }
 
+// OpsClusterCfg is each cluster's configuration
+type OpsClusterCfg struct {
+	Name        string         `json:"name"`
+	AlertPolicy AlertPolicyCfg `json:"alertPolicy"`
+}
+
 // PulsarOpsCfg is for monitor a list of Pulsar cluster
 type PulsarOpsCfg struct {
-	MasterToken     string   `json:"masterToken"`
-	Clusters        []string `json:"clusters"`
-	IntervalSeconds int      `json:"intervalSeconds"`
+	MasterToken     string          `json:"masterToken"`
+	Clusters        []OpsClusterCfg `json:"clusters"`
+	IntervalSeconds int             `json:"intervalSeconds"`
 }
 
 // TopicCfg is topic configuration
 type TopicCfg struct {
-	LatencyBudgetMs int    `json:"latencyBudgetMs"`
-	PulsarURL       string `json:"pulsarUrl"`
-	TopicName       string `json:"topicName"`
+	LatencyBudgetMs int            `json:"latencyBudgetMs"`
+	PulsarURL       string         `json:"pulsarUrl"`
+	TopicName       string         `json:"topicName"`
+	AlertPolicy     AlertPolicyCfg `json:"AlertPolicy"`
 }
 
 // PulsarPerfCfg is configuration to monitor Pulsar pub sub latency
@@ -74,6 +83,15 @@ type Configuration struct {
 	PulsarOpsConfig  PulsarOpsCfg  `json:"pulsarOpsConfig"`
 	PulsarPerfConfig PulsarPerfCfg `json:"pulsarPerfConfig"`
 	SitesConfig      SitesCfg      `json:"sitesConfig"`
+}
+
+// AlertPolicyCfg is a set of criteria to evaluation triggers for incident alert
+type AlertPolicyCfg struct {
+	// first evalation for a single count
+	Ceiling int `json:"ceiling"`
+	// Second evaluation for moving window
+	MovingWindowSeconds   int `json:"movingWindowSeconds"`
+	CeilingInMovingWindow int `json:"ceilingInMovingWindow"`
 }
 
 // Config - this server's configuration instance

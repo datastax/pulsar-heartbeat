@@ -44,19 +44,13 @@ func monitorSite(site SiteCfg) error {
 	return nil
 }
 
-func monitorAlert(site SiteCfg) {
-	err := monitorSite(site)
-	if err != nil {
-		errMsg := fmt.Sprintf("site %s error %v", site.URL, err)
-		Alert(errMsg)
-	}
-}
-
 func mon(site SiteCfg) {
 	err := monitorSite(site)
 	if err != nil {
 		errMsg := fmt.Sprintf("site %s error %v", site.URL, err)
+		title := fmt.Sprintf("persisted kafkaesque.io %s endpoint failure", site.Name)
 		Alert(errMsg)
+		ReportIncident(site.Name, title, errMsg, &site.AlertPolicy)
 	}
 }
 

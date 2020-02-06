@@ -29,10 +29,21 @@ lint:
       - vendor/
     expire_in: 1 hour
 
+test:
+  stage: test
+  dependencies:
+    - lint
+  image: golang:1.13
+  before_script:
+    - *inject-gopath
+  script:
+    - cd src
+    - go test -v ./...
+
 build:
   stage: build
   dependencies:
-    - lint
+    - test
   image: golang:1.13
   before_script:
     - *inject-gopath
