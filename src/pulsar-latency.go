@@ -167,7 +167,7 @@ func MeasureLatency() {
 		clusterName := getNames(cluster.PulsarURL)
 		log.Printf("cluster %s has message latency %v", clusterName, latency)
 		if err != nil {
-			errMsg := fmt.Sprintf("cluster %s Pulsar error: %v", clusterName, err)
+			errMsg := fmt.Sprintf("cluster %s latency test Pulsar error: %v", clusterName, err)
 			Alert(errMsg)
 			ReportIncident(clusterName, "persisted latency test failure", errMsg, &cluster.AlertPolicy)
 		} else if latency > expectedLatency {

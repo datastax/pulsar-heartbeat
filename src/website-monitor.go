@@ -31,10 +31,10 @@ func monitorSite(site SiteCfg) error {
 	if resp != nil {
 		defer resp.Body.Close()
 	}
-	PromLatencySum(SiteLatencyGaugeOpt(), site.Name, time.Now().Sub(sentTime))
 	if err != nil {
 		return err
 	}
+	PromLatencySum(SiteLatencyGaugeOpt(), site.Name, time.Now().Sub(sentTime))
 
 	// log.Println("site status code ", resp.StatusCode)
 	if resp.StatusCode != site.StatusCode {
@@ -47,7 +47,7 @@ func monitorSite(site SiteCfg) error {
 func mon(site SiteCfg) {
 	err := monitorSite(site)
 	if err != nil {
-		errMsg := fmt.Sprintf("site %s error %v", site.URL, err)
+		errMsg := fmt.Sprintf("site monitoring %s error: %v", site.URL, err)
 		title := fmt.Sprintf("persisted kafkaesque.io %s endpoint failure", site.Name)
 		Alert(errMsg)
 		ReportIncident(site.Name, title, errMsg, &site.AlertPolicy)

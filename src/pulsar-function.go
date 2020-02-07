@@ -13,7 +13,7 @@ import (
 // monitor pulsar function trigger and verify successful response
 
 // PulsarFunction triggers a function and verify the response
-func PulsarFunction(clusterURL, token, testStr string) error {
+func PulsarFunction(clusterName, clusterURL, token, testStr string) error {
 
 	buffer := new(bytes.Buffer)
 
@@ -37,6 +37,8 @@ func PulsarFunction(clusterURL, token, testStr string) error {
 	client := &http.Client{
 		Timeout: 5 * time.Second, //because the function also times out at 5 seconds by default
 	}
+
+	sentTime := time.Now()
 	resp, err := client.Do(req)
 	if resp != nil {
 		defer resp.Body.Close()
@@ -44,6 +46,7 @@ func PulsarFunction(clusterURL, token, testStr string) error {
 	if err != nil {
 		return err
 	}
+	PromLatencySum(FuncLatencyGaugeOpt(), clusterName, time.Now().Sub(sentTime))
 
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("failure statusCode %d", resp.StatusCode)
@@ -71,11 +74,11 @@ func PulsarFunctions() {
 		name := Trim(cluster.Name)
 		clusterURL := Trim(cluster.TriggerURL)
 		log.Printf("trigger function %s\n", clusterURL)
-		err := PulsarFunction(clusterURL, token, "flyingmama")
+		err := PulsarFunction(name, clusterURL, token, "flyingmama")
 		if err != nil {
-			errMsg := fmt.Sprintf("fail to connect cluster %s err %v", name, err)
+			errMsg := fmt.Sprintf("trigger-function failed on cluster %s error: %v", name, err)
 			Alert(errMsg)
-			ReportIncident(name, "persisted cluster tenants endpoint failure", errMsg, &cluster.AlertPolicy)
+			ReportIncident(name, "persisted trigger-function failure", errMsg, &cluster.AlertPolicy)
 		} else {
 			ClearIncident(name)
 		}
