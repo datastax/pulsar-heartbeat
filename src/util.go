@@ -183,3 +183,8 @@ func StrContains(strs []string, str string) bool {
 	}
 	return false
 }
+
+// Trim trims leading/prefix and suffix spaces, tab, \n in a string
+func Trim(str string) string {
+	return strings.TrimSpace(str)
+}

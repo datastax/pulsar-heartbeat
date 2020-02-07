@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	cfgFile = flag.String("config", "../config/runtime.json", "config file for monitoring")
+	cfgFile = flag.String("config", "../config/runtime.yml", "config file for monitoring")
 )
 
 func main() {
@@ -24,6 +24,7 @@ func main() {
 	exit := make(chan bool)
 	cfg := GetConfig()
 
+	RunInterval(PulsarFunctions, TimeDuration(cfg.PulsarPerfConfig.IntervalSeconds, 300, time.Second))
 	RunInterval(PulsarTenants, TimeDuration(cfg.PulsarOpsConfig.IntervalSeconds, 120, time.Second))
 	RunInterval(StartHeartBeat, TimeDuration(cfg.OpsGenieConfig.IntervalSeconds, 240, time.Second))
 	RunInterval(MeasureLatency, TimeDuration(cfg.PulsarPerfConfig.IntervalSeconds, 300, time.Second))

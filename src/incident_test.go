@@ -8,6 +8,14 @@ import (
 	"time"
 )
 
+func TestUnmarshConfigFile(t *testing.T) {
+	ReadConfigFile("../config/runtime-template.json")
+	assert(t, ":8081" == GetConfig().PrometheusConfig.Port, "load json config")
+	ReadConfigFile("../config/runtime-template.yml")
+	assert(t, ":8080" == GetConfig().PrometheusConfig.Port, "load yaml config")
+
+}
+
 func TestIncidentAlertPolicy(t *testing.T) {
 
 	assert(t, StrContains([]string{"test", "foo"}, "foo"), "fail to eval container string")
