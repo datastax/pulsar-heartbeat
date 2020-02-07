@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	cfgFile = flag.String("config", "../config/runtime.json", "config file for monitoring")
+	cfgFile = flag.String("config", "../config/runtime.yml", "config file for monitoring")
 )
 
 func main() {
