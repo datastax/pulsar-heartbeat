@@ -47,6 +47,16 @@ func MsgLatencyGaugeOpt() prometheus.GaugeOpts {
 	}
 }
 
+// FuncLatencyGaugeOpt is the description of Pulsar Function latency gauge
+func FuncLatencyGaugeOpt() prometheus.GaugeOpts {
+	return prometheus.GaugeOpts{
+		Namespace: "pulsar",
+		Subsystem: "function",
+		Name:      "latency_ms",
+		Help:      "Plusar message latency in ms",
+	}
+}
+
 // PromGaugeInt registers gauge reading in integer
 func PromGaugeInt(opt prometheus.GaugeOpts, cluster string, num int) {
 	PromGauge(opt, cluster, float64(num))

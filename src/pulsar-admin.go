@@ -59,9 +59,9 @@ func PulsarTenants() {
 		clusterURL := "https://kafkaesque.io/api/v1/" + cluster.Name + "/tenants/"
 		tenantSize, err := PulsarAdminTenant(clusterURL, token)
 		if err != nil {
-			errMsg := fmt.Sprintf("fail to connect cluster %s err %v", cluster.Name, err)
+			errMsg := fmt.Sprintf("tenant-test failed on cluster %s error: %v", cluster.Name, err)
 			Alert(errMsg)
-			ReportIncident(cluster.Name, "persisted cluster tenants endpoint failure", errMsg, &cluster.AlertPolicy)
+			ReportIncident(cluster.Name, "persisted cluster tenants test failure", errMsg, &cluster.AlertPolicy)
 		} else {
 			PromGaugeInt(TenantsGaugeOpt(), cluster.Name, tenantSize)
 			ClearIncident(cluster.Name)

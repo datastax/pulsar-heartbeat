@@ -23,7 +23,7 @@ $ sudo docker build -t pulsar-ops-monitor .
 Run docker container with Pulsar CA certificate and expose Prometheus metrics for collection.
 
 ``` bash
-$ sudo docker run -d -it -v /home/ming/go/src/gitlab.com/operation-monitor/config/runtime.json:/config/runtime.json -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-bundle.crt -p 8080:8080 --name=pulsar-monitor pulsar-ops-monitor
+$ sudo docker run -d -it -v /home/ming/go/src/gitlab.com/operation-monitor/config/runtime.yml:/config/runtime.yml -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-bundle.crt -p 8080:8080 --name=pulsar-monitor pulsar-ops-monitor
 ```
 
 ## Prometheus
