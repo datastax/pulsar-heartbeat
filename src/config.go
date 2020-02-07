@@ -1,15 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"log"
-	"os"
 	"time"
-)
+	"unicode"
 
-// DefaultConfigFile - default config file
-// it can be overwritten by env variable PULSAR_BEAM_CONFIG
-const DefaultConfigFile = "../config/pulsar_beam.json"
+	"github.com/ghodss/yaml"
+)
 
 // PrometheusCfg configures Premetheus set up
 type PrometheusCfg struct {
@@ -115,19 +115,37 @@ var Config Configuration
 // ReadConfigFile reads configuration file.
 func ReadConfigFile(configFile string) {
 
-	//filename is the path to the json config file
-	file, err := os.Open(configFile)
+	fileBytes, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		log.Printf("failed to load configuration file %s", configFile)
 		panic(err)
 	}
-	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&Config)
-	if err != nil {
-		panic(err)
+
+	if hasJSONPrefix(fileBytes) {
+		err = json.Unmarshal(fileBytes, &Config)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		err = yaml.Unmarshal(fileBytes, &Config)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	log.Println(Config)
+}
+
+var jsonPrefix = []byte("{")
+
+func hasJSONPrefix(buf []byte) bool {
+	return hasPrefix(buf, jsonPrefix)
+}
+
+// Return true if the first non-whitespace bytes in buf is prefix.
+func hasPrefix(buf []byte, prefix []byte) bool {
+	trim := bytes.TrimLeftFunc(buf, unicode.IsSpace)
+	return bytes.HasPrefix(trim, prefix)
 }
 
 //GetConfig returns a reference to the Configuration
