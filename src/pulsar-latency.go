@@ -20,8 +20,14 @@ var (
 	clients = make(map[string]pulsar.Client)
 )
 
+type MsgResult struct {
+	InOrderDelivery bool
+	Latency         time.Duration
+	SentTime        time.Time
+}
+
 // PubSubLatency the latency including successful produce and consume of a message
-func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
+func PubSubLatency(tokenStr, uri, topicName, msgPrefix string, payloads [][]byte) (MsgResult, error) {
 	// uri is in the form of pulsar+ssl://useast1.gcp.kafkaesque.io:6651
 	client, ok := clients[uri]
 	if !ok {
@@ -46,7 +52,7 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 		})
 
 		if err != nil {
-			return failedLatency, err
+			return MsgResult{Latency: failedLatency}, err
 		}
 		clients[uri] = client
 	}
@@ -63,7 +69,7 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 		// we guess something could have gone wrong if producer cannot be created
 		client.Close()
 		delete(clients, uri)
-		return failedLatency, err
+		return MsgResult{Latency: failedLatency}, err
 	}
 
 	defer producer.Close()
@@ -79,35 +85,47 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 	if err != nil {
 		defer client.Close() //must defer to allow producer to be closed first
 		delete(clients, uri)
-		return failedLatency, err
+		return MsgResult{Latency: failedLatency}, err
 	}
 	defer consumer.Close()
 
 	// the original sent time to notify the receiver for latency calculation
-	timeCounter := make(chan time.Time, 1)
+	//timeCounter := make(chan time.Time, 1)
 
 	// notify the main thread with the latency to complete the exit
-	completeChan := make(chan time.Duration, 1)
+	completeChan := make(chan MsgResult, 1)
 
 	// error report channel
 	errorChan := make(chan error, 1)
 
-	payloadStr := "measure-latency123" + time.Now().Format(time.UnixDate)
+	// payloadStr := "measure-latency123" + time.Now().Format(time.UnixDate)
+	receivedCount := len(payloads)
+	sentPayloads := make(map[string]*MsgResult, receivedCount)
 
 	go func() {
-		cCtx := context.Background()
-		loop := true
 
-		for loop {
+		lastMessageIndex := -1 // to track the message delivery order
+		for receivedCount > 0 {
+			cCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
 			msg, err := consumer.Receive(cCtx)
 			if err != nil {
-				loop = false // play safe?
+				receivedCount = 0 // play safe?
 				errorChan <- fmt.Errorf("consumer Receive() error: %v", err)
 				break
 			}
+			receivedTime := time.Now()
 			receivedStr := string(msg.Payload())
-			if payloadStr == receivedStr {
-				loop = false
+			currentMsgIndex := GetMessageId(msgPrefix, receivedStr)
+			if result, ok := sentPayloads[receivedStr]; ok {
+				receivedCount--
+				result.Latency = receivedTime.Sub(result.SentTime)
+				if currentMsgIndex > lastMessageIndex {
+					result.InOrderDelivery = true
+					lastMessageIndex = currentMsgIndex
+				}
+				/**
 				select {
 				case sentTime := <-timeCounter:
 					completeChan <- time.Now().Sub(sentTime)
@@ -117,41 +135,60 @@ func PubSubLatency(tokenStr, uri, topicName string) (time.Duration, error) {
 					errMsg := fmt.Sprintf("consumer received message, but timed out on producer report time")
 					errorChan <- errors.New(errMsg)
 				}
+				**/
 			}
 			consumer.Ack(msg)
-			log.Println("consumer received ", receivedStr)
+			log.Printf("consumer index received %d payload size %d\n", currentMsgIndex, len(receivedStr))
+		}
+
+		//successful case all message received
+		if receivedCount == 0 {
+			var total time.Duration
+			inOrder := true
+			for _, v := range sentPayloads {
+				total += v.Latency
+				inOrder = inOrder && v.InOrderDelivery
+			}
+
+			// receiverLatency <- total / receivedCount
+			completeChan <- MsgResult{
+				Latency:         time.Duration(int(total/time.Millisecond)/len(payloads)) * time.Millisecond,
+				InOrderDelivery: inOrder,
+			}
 		}
 
 	}()
 
-	ctx := context.Background()
+	for _, payload := range payloads {
+		ctx := context.Background()
 
-	// Create a different message to send asynchronously
-	asyncMsg := pulsar.ProducerMessage{
-		Payload: []byte(payloadStr),
-	}
-
-	sentTime := time.Now()
-	// Attempt to send the message asynchronously and handle the response
-	producer.SendAsync(ctx, &asyncMsg, func(messageId pulsar.MessageID, msg *pulsar.ProducerMessage, err error) {
-		if err != nil {
-			errMsg := fmt.Sprintf("fail to instantiate Pulsar client: %v", err)
-			log.Println(errMsg)
-			// report error and exit
-			errorChan <- errors.New(errMsg)
+		// Create a different message to send asynchronously
+		asyncMsg := pulsar.ProducerMessage{
+			Payload: payload,
 		}
-		timeCounter <- sentTime
 
-		log.Println("successfully published ", string(msg.Payload), sentTime)
-	})
+		sentTime := time.Now()
+		sentPayloads[string(payload)] = &MsgResult{SentTime: sentTime}
+		// Attempt to send the message asynchronously and handle the response
+		producer.SendAsync(ctx, &asyncMsg, func(messageId pulsar.MessageID, msg *pulsar.ProducerMessage, err error) {
+			if err != nil {
+				errMsg := fmt.Sprintf("fail to instantiate Pulsar client: %v", err)
+				log.Println(errMsg)
+				// report error and exit
+				errorChan <- errors.New(errMsg)
+			}
+
+			log.Println("successfully published ", sentTime)
+		})
+	}
 
 	select {
 	case receiverLatency := <-completeChan:
 		return receiverLatency, nil
 	case reportedErr := <-errorChan:
-		return failedLatency, reportedErr
-	case <-time.Tick(15 * time.Second):
-		return failedLatency, errors.New("latency measure not received after timeout")
+		return MsgResult{Latency: failedLatency}, reportedErr
+	case <-time.Tick(time.Duration(5*len(payloads)) * time.Second):
+		return MsgResult{Latency: failedLatency}, errors.New("latency measure not received after timeout")
 	}
 }
 
@@ -160,25 +197,33 @@ func MeasureLatency() {
 	token := AssignString(GetConfig().PulsarPerfConfig.Token, GetConfig().PulsarOpsConfig.MasterToken)
 	for _, cluster := range GetConfig().PulsarPerfConfig.TopicCfgs {
 		expectedLatency := TimeDuration(cluster.LatencyBudgetMs, latencyBudget, time.Millisecond)
-		log.Printf("test cluster %s on topic %s with latency budget %v\n", cluster.PulsarURL, cluster.TopicName, expectedLatency)
-		latency, err := PubSubLatency(token, cluster.PulsarURL, cluster.TopicName)
+		prefix := "messageid"
+		payloads := AllMsgPayloads(prefix, cluster.PayloadSizes, cluster.NumOfMessages)
+		log.Printf("send %d messages to topic %s on cluster %s with latency budget %v, %v, %d\n",
+			len(payloads), cluster.TopicName, cluster.PulsarURL, expectedLatency, cluster.PayloadSizes, cluster.NumOfMessages)
+		result, err := PubSubLatency(token, cluster.PulsarURL, cluster.TopicName, prefix, payloads)
 
 		// uri is in the form of pulsar+ssl://useast1.gcp.kafkaesque.io:6651
 		clusterName := getNames(cluster.PulsarURL)
-		log.Printf("cluster %s has message latency %v", clusterName, latency)
+		log.Printf("cluster %s has message latency %v", clusterName, result.Latency)
 		if err != nil {
 			errMsg := fmt.Sprintf("cluster %s latency test Pulsar error: %v", clusterName, err)
 			Alert(errMsg)
 			ReportIncident(clusterName, "persisted latency test failure", errMsg, &cluster.AlertPolicy)
-		} else if latency > expectedLatency {
+		} else if !result.InOrderDelivery {
+			errMsg := fmt.Sprintf("cluster %s Pulsar message received out of order", clusterName)
+			Alert(errMsg)
+		} else if result.Latency > expectedLatency {
 			errMsg := fmt.Sprintf("cluster %s message latency %v over the budget %v",
-				clusterName, latency, expectedLatency)
+				clusterName, result.Latency, expectedLatency)
 			Alert(errMsg)
 			ReportIncident(clusterName, "persisted latency test failure", errMsg, &cluster.AlertPolicy)
 		} else {
+			log.Printf("send %d messages to topic %s on cluster %s succeeded\n",
+				len(payloads), cluster.TopicName, cluster.PulsarURL)
 			ClearIncident(clusterName)
 		}
-		PromLatencySum(MsgLatencyGaugeOpt(), clusterName, latency)
+		PromLatencySum(MsgLatencyGaugeOpt(), clusterName, result.Latency)
 	}
 }
 

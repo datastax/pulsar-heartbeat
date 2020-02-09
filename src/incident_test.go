@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -14,6 +16,101 @@ func TestUnmarshConfigFile(t *testing.T) {
 	ReadConfigFile("../config/runtime-template.yml")
 	assert(t, ":8080" == GetConfig().PrometheusConfig.Port, "load yaml config")
 
+}
+
+func TestRandBytes(t *testing.T) {
+	p := Payload{
+		Ceiling: 8,
+		Floor:   8,
+	}
+	assert(t, 8 == len(p.createPayload()), "fixed size payload")
+	assert(t, string(p.createPayload()) != string(p.createPayload()), "payloads are random")
+
+	p = Payload{
+		Ceiling: 8000,
+		Floor:   7000,
+	}
+	size := len(p.createPayload())
+	assert(t, p.Ceiling > size && size > p.Floor, "variable size payload")
+
+	payload := p.PrefixPayload("messageid:1290-")
+	assert(t, "messageid:1290" == strings.Split(string(payload), "-")[0], "verify prefix in generated payload")
+
+	p = Payload{
+		Ceiling: 50 * 1000 * 1000,
+		Floor:   44 * 1000 * 1000,
+	}
+	size = len(p.createPayload())
+	fmt.Println(size)
+	assert(t, 40*1000*1000 < size && size < p.Ceiling, "large size payload")
+
+	prefix := "prefix"
+	p.GenDefaultPayload()
+	for i := 0; i < 10; i++ {
+		assert(t, string(p.PrefixDefaultPayload(prefix)) == string(p.PrefixDefaultPayload(prefix)), "use default payload")
+	}
+}
+
+func TestGenMultipleSamePayloadSize(t *testing.T) {
+
+	// with single payload size specified with 3 messages
+	msgs := AllMsgPayloads("messageid", []string{"20B"}, 13)
+	assert(t, 13 == len(msgs), "total messages")
+	for i := 0; i < len(msgs); i++ {
+		assert(t, 20 == len(msgs[i]), "individual message size")
+		assert(t, i == GetMessageId("messageid", string(msgs[i])), "check message index")
+	}
+}
+
+func TestGenMulitplDifferentPayloads(t *testing.T) {
+
+	// with more payload size specified than the number of messages
+	msgs := AllMsgPayloads("aid", []string{"20B", "400B", "25B", "2B", "1KB"}, 3)
+	assert(t, 5 == len(msgs), "total messages")
+	for i := 0; i < len(msgs); i++ {
+		assert(t, i == GetMessageId("aid", string(msgs[i])), "check message index")
+	}
+}
+
+func TestGenSinglePayloads(t *testing.T) {
+
+	// with single payload size specified with 3 messages
+	msgs := AllMsgPayloads("messageid", []string{"2KB"}, 0)
+	assert(t, 1 == len(msgs), "total messages")
+	assert(t, 2*1024 == len(msgs[0]), "individual message size")
+	messageArray := strings.Split(string(msgs[0]), PrefixDelimiter)
+	assert(t, "messageid" == messageArray[0], "check prefix")
+	index, err := strconv.Atoi(messageArray[1])
+	errNil(t, err)
+	assert(t, index == 0, "check message index")
+}
+
+func TestGenDefaultSinglePayload(t *testing.T) {
+
+	// no single payload size nor the number of message
+	msgs := AllMsgPayloads("yours", []string{}, 0)
+	assert(t, 1 == len(msgs), "total messages")
+	assert(t, len("yours-0-") == len(msgs[0]), "individual message size")
+	messageArray := strings.Split(string(msgs[0]), PrefixDelimiter)
+	assert(t, "yours" == messageArray[0], "check prefix")
+	index, err := strconv.Atoi(messageArray[1])
+	errNil(t, err)
+	assert(t, index == 0, "check message index")
+}
+
+func TestGenMultipleDefaultPayloadSize(t *testing.T) {
+
+	// no single payload size nor the number of message
+	msgs := AllMsgPayloads("your", []string{}, 1002)
+	assert(t, 1002 == len(msgs), "total messages")
+	for i := 0; i < len(msgs); i++ {
+		assert(t, 12 > len(msgs[i]), "individual message size")
+		messageArray := strings.Split(string(msgs[i]), PrefixDelimiter)
+		assert(t, "your" == messageArray[0], "check prefix")
+		index, err := strconv.Atoi(messageArray[1])
+		errNil(t, err)
+		assert(t, index == i, "check message index")
+	}
 }
 
 func TestIncidentAlertPolicy(t *testing.T) {
