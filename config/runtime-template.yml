@@ -118,6 +118,8 @@ pulsarPerfConfig:
   - latencyBudgetMs: 2400
     pulsarUrl: pulsar+ssl://asiaeast2.gcp.kafkaesque.io:6651
     topicName: persistent://ming-luo/local-asiaeast2-gcp/reserved-cluster-monitoring
+    payloadSizes: ["200B"]
+    numberOfMessages: 1
     alertPolicy:
       Ceiling: 3
       MovingWindowSeconds: 600

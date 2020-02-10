@@ -64,6 +64,8 @@ type TopicCfg struct {
 	LatencyBudgetMs int            `json:"latencyBudgetMs"`
 	PulsarURL       string         `json:"pulsarUrl"`
 	TopicName       string         `json:"topicName"`
+	PayloadSizes    []string       `json:"payloadSizes"`
+	NumOfMessages   int            `json:"numberOfMessages"`
 	AlertPolicy     AlertPolicyCfg `json:"AlertPolicy"`
 }
 
