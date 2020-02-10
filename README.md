@@ -6,11 +6,11 @@ This is a ops monitoring tool for
 - report and monitor heartbeat with OpsGenie
 - alert on Slack
 
-This is a data driven tool. The configuraion is a json file. Here is a [template](../config/runtime_template.json).
+This is a data driven tool. The configuraion is a yaml or json file. Here is a [template](../config/runtime_template.json).
 The configuration json file can be specified in the overwrite order of 
 - an environment variable `PULSAR_OPS_MONITOR_CFG`
-- an command line argument `./pulsar-monitor -config /path/to/pulsar_ops_monitor_config.json`
-- A default path to `../config/runtime.json`
+- an command line argument `./pulsar-monitor -config /path/to/pulsar_ops_monitor_config.yml`
+- A default path to `../config/runtime.yml`
 
 ## Docker compose
 `./config/runtime.yml` or `./config/runtime.json` must have a Pulsar jwt and configured properly.
