@@ -50,6 +50,9 @@ func randRange(ceiling, floor int) int {
 	return rand.Intn(ceiling-floor+1) + floor
 }
 
+// GenPayload generates an array of bytes with prefix string
+// and payload size. If the specified payload size is less than
+// the prefix size, the payload will just be the prefix.
 func GenPayload(prefix, size string) []byte {
 	numOfBytes := NumOfBytes(size)
 	if len(prefix) > numOfBytes {
@@ -62,6 +65,7 @@ func GenPayload(prefix, size string) []byte {
 	return p.PrefixDefaultPayload(prefix)
 }
 
+// NewPayload returns a new Payload object with a fixed payload size
 func NewPayload(size int) Payload {
 	p := Payload{
 		Ceiling: size,
@@ -71,6 +75,7 @@ func NewPayload(size int) Payload {
 	return p
 }
 
+// NumOfBytes returns a number of bytes with specified size in MB or KB
 func NumOfBytes(size string) int {
 	unitRegex, _ := regexp.Compile("[a-zA-Z]+")
 	numRegex, _ := regexp.Compile("[0-9]+")
@@ -93,6 +98,8 @@ func NumOfBytes(size string) int {
 	}
 }
 
+// AllMsgPayloads generates a series of payloads based on
+// specified payload sizes or the number of messages
 func AllMsgPayloads(prefix string, payloadSizes []string, numOfMsg int) [][]byte {
 	actualNumOfMsg := 1 //default minimun one message
 	specifiedSizes := len(payloadSizes)
@@ -126,7 +133,8 @@ func AllMsgPayloads(prefix string, payloadSizes []string, numOfMsg int) [][]byte
 	return payloads
 }
 
-func GetMessageId(prefix, str string) int {
+// GetMessageID returns the message index by parsing the template payload string with a prefix.
+func GetMessageID(prefix, str string) int {
 	parts := strings.Split(string(str), PrefixDelimiter)
 	if prefix != parts[0] {
 		return -1

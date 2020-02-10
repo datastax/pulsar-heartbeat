@@ -58,7 +58,7 @@ func TestGenMultipleSamePayloadSize(t *testing.T) {
 	assert(t, 13 == len(msgs), "total messages")
 	for i := 0; i < len(msgs); i++ {
 		assert(t, 20 == len(msgs[i]), "individual message size")
-		assert(t, i == GetMessageId("messageid", string(msgs[i])), "check message index")
+		assert(t, i == GetMessageID("messageid", string(msgs[i])), "check message index")
 	}
 }
 
@@ -68,7 +68,7 @@ func TestGenMulitplDifferentPayloads(t *testing.T) {
 	msgs := AllMsgPayloads("aid", []string{"20B", "400B", "25B", "2B", "1KB"}, 3)
 	assert(t, 5 == len(msgs), "total messages")
 	for i := 0; i < len(msgs); i++ {
-		assert(t, i == GetMessageId("aid", string(msgs[i])), "check message index")
+		assert(t, i == GetMessageID("aid", string(msgs[i])), "check message index")
 	}
 }
 

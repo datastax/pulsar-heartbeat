@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/apache/pulsar-client-go/pulsar"
@@ -20,6 +21,7 @@ var (
 	clients = make(map[string]pulsar.Client)
 )
 
+// MsgResult stores the result of message test
 type MsgResult struct {
 	InOrderDelivery bool
 	Latency         time.Duration
@@ -100,7 +102,12 @@ func PubSubLatency(tokenStr, uri, topicName, msgPrefix string, payloads [][]byte
 
 	// payloadStr := "measure-latency123" + time.Now().Format(time.UnixDate)
 	receivedCount := len(payloads)
+
+	// Key is payload in string, value is pointer to a MsgResult
 	sentPayloads := make(map[string]*MsgResult, receivedCount)
+	// Use mutex instead of sync.Map in favour of performance and simplicity
+	//  and because no need to protect map iteration to calculate results
+	mapMutex := &sync.Mutex{}
 
 	go func() {
 
@@ -117,28 +124,21 @@ func PubSubLatency(tokenStr, uri, topicName, msgPrefix string, payloads [][]byte
 			}
 			receivedTime := time.Now()
 			receivedStr := string(msg.Payload())
-			currentMsgIndex := GetMessageId(msgPrefix, receivedStr)
-			if result, ok := sentPayloads[receivedStr]; ok {
+			currentMsgIndex := GetMessageID(msgPrefix, receivedStr)
+
+			mapMutex.Lock()
+			result, ok := sentPayloads[receivedStr]
+			mapMutex.Unlock()
+			if ok {
 				receivedCount--
 				result.Latency = receivedTime.Sub(result.SentTime)
 				if currentMsgIndex > lastMessageIndex {
 					result.InOrderDelivery = true
 					lastMessageIndex = currentMsgIndex
 				}
-				/**
-				select {
-				case sentTime := <-timeCounter:
-					completeChan <- time.Now().Sub(sentTime)
-
-				case <-time.Tick(5 * time.Second):
-					// this is impossible case that producer must have sent signal
-					errMsg := fmt.Sprintf("consumer received message, but timed out on producer report time")
-					errorChan <- errors.New(errMsg)
-				}
-				**/
 			}
 			consumer.Ack(msg)
-			log.Printf("consumer index received %d payload size %d\n", currentMsgIndex, len(receivedStr))
+			log.Printf("consumer received message index %d payload size %d\n", currentMsgIndex, len(receivedStr))
 		}
 
 		//successful case all message received
@@ -168,8 +168,10 @@ func PubSubLatency(tokenStr, uri, topicName, msgPrefix string, payloads [][]byte
 		}
 
 		sentTime := time.Now()
+		mapMutex.Lock()
 		sentPayloads[string(payload)] = &MsgResult{SentTime: sentTime}
-		// Attempt to send the message asynchronously and handle the response
+		mapMutex.Unlock()
+		// Attempt to send message asynchronously and handle the response
 		producer.SendAsync(ctx, &asyncMsg, func(messageId pulsar.MessageID, msg *pulsar.ProducerMessage, err error) {
 			if err != nil {
 				errMsg := fmt.Sprintf("fail to instantiate Pulsar client: %v", err)

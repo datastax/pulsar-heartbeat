@@ -178,6 +178,8 @@ func Trim(str string) string {
 	return strings.TrimSpace(str)
 }
 
+// RandStringBytes generates n length byte array with each byte is randomly picked
+// from lower or upper case letters
 func RandStringBytes(n int) []byte {
 	b := make([]byte, n)
 	for i := range b {
