@@ -12,7 +12,14 @@ The configuration json file can be specified in the overwrite order of
 - an command line argument `./pulsar-monitor -config /path/to/pulsar_ops_monitor_config.json`
 - A default path to `../config/runtime.json`
 
-## Docker
+## Docker compose
+`./config/runtime.yml` or `./config/runtime.json` must have a Pulsar jwt and configured properly.
+
+``` bash
+$ docker-compose up
+```
+
+## Docker example
 The runtime.json file must be mounted as /app/runtime.json
 
 This runs a multi stage build that produces a 18MB docker image.
