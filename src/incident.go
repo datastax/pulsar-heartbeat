@@ -112,7 +112,7 @@ func trackIncident(component, msg, desc string, eval *AlertPolicyCfg) bool {
 
 // ReportIncident reports an incident
 func ReportIncident(component, msg, desc string, eval *AlertPolicyCfg) {
-	if trackIncident(component, msg, desc, eval) {
+	if eval.Ceiling > 0 && trackIncident(component, msg, desc, eval) {
 		CreateIncident(component, msg, desc, "P2")
 	}
 }

@@ -29,7 +29,7 @@ type MsgResult struct {
 }
 
 // PubSubLatency the latency including successful produce and consume of a message
-func PubSubLatency(tokenStr, uri, topicName, msgPrefix string, payloads [][]byte) (MsgResult, error) {
+func PubSubLatency(tokenStr, uri, topicName, outputTopic, msgPrefix, expectedSuffix string, payloads [][]byte, maxPayloadSize int) (MsgResult, error) {
 	// uri is in the form of pulsar+ssl://useast1.gcp.kafkaesque.io:6651
 	client, ok := clients[uri]
 	if !ok {
@@ -77,8 +77,9 @@ func PubSubLatency(tokenStr, uri, topicName, msgPrefix string, payloads [][]byte
 	defer producer.Close()
 
 	subscriptionName := "latency-measure"
+	consumerTopic := AssignString(outputTopic, topicName)
 	consumer, err := client.Subscribe(pulsar.ConsumerOptions{
-		Topic:                       topicName,
+		Topic:                       consumerTopic,
 		SubscriptionName:            subscriptionName,
 		Type:                        pulsar.Exclusive,
 		SubscriptionInitialPosition: pulsar.SubscriptionPositionLatest,
@@ -90,9 +91,6 @@ func PubSubLatency(tokenStr, uri, topicName, msgPrefix string, payloads [][]byte
 		return MsgResult{Latency: failedLatency}, err
 	}
 	defer consumer.Close()
-
-	// the original sent time to notify the receiver for latency calculation
-	//timeCounter := make(chan time.Time, 1)
 
 	// notify the main thread with the latency to complete the exit
 	completeChan := make(chan MsgResult, 1)
@@ -109,11 +107,12 @@ func PubSubLatency(tokenStr, uri, topicName, msgPrefix string, payloads [][]byte
 	//  and because no need to protect map iteration to calculate results
 	mapMutex := &sync.Mutex{}
 
+	receiveTimeout := TimeDuration(5+(maxPayloadSize/102400), 5, time.Second)
 	go func() {
 
 		lastMessageIndex := -1 // to track the message delivery order
 		for receivedCount > 0 {
-			cCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			cCtx, cancel := context.WithTimeout(context.Background(), receiveTimeout)
 			defer cancel()
 
 			msg, err := consumer.Receive(cCtx)
@@ -168,8 +167,9 @@ func PubSubLatency(tokenStr, uri, topicName, msgPrefix string, payloads [][]byte
 		}
 
 		sentTime := time.Now()
+		expectedMsg := expectedMessage(string(payload), expectedSuffix)
 		mapMutex.Lock()
-		sentPayloads[string(payload)] = &MsgResult{SentTime: sentTime}
+		sentPayloads[expectedMsg] = &MsgResult{SentTime: sentTime}
 		mapMutex.Unlock()
 		// Attempt to send message asynchronously and handle the response
 		producer.SendAsync(ctx, &asyncMsg, func(messageId pulsar.MessageID, msg *pulsar.ProducerMessage, err error) {
@@ -195,37 +195,10 @@ func PubSubLatency(tokenStr, uri, topicName, msgPrefix string, payloads [][]byte
 }
 
 // MeasureLatency measures pub sub latency of each cluster
+// TODO: merge this function with TopicBasedLatencyTest
 func MeasureLatency() {
-	token := AssignString(GetConfig().PulsarPerfConfig.Token, GetConfig().PulsarOpsConfig.MasterToken)
 	for _, cluster := range GetConfig().PulsarPerfConfig.TopicCfgs {
-		expectedLatency := TimeDuration(cluster.LatencyBudgetMs, latencyBudget, time.Millisecond)
-		prefix := "messageid"
-		payloads := AllMsgPayloads(prefix, cluster.PayloadSizes, cluster.NumOfMessages)
-		log.Printf("send %d messages to topic %s on cluster %s with latency budget %v, %v, %d\n",
-			len(payloads), cluster.TopicName, cluster.PulsarURL, expectedLatency, cluster.PayloadSizes, cluster.NumOfMessages)
-		result, err := PubSubLatency(token, cluster.PulsarURL, cluster.TopicName, prefix, payloads)
-
-		// uri is in the form of pulsar+ssl://useast1.gcp.kafkaesque.io:6651
-		clusterName := getNames(cluster.PulsarURL)
-		log.Printf("cluster %s has message latency %v", clusterName, result.Latency)
-		if err != nil {
-			errMsg := fmt.Sprintf("cluster %s latency test Pulsar error: %v", clusterName, err)
-			Alert(errMsg)
-			ReportIncident(clusterName, "persisted latency test failure", errMsg, &cluster.AlertPolicy)
-		} else if !result.InOrderDelivery {
-			errMsg := fmt.Sprintf("cluster %s Pulsar message received out of order", clusterName)
-			Alert(errMsg)
-		} else if result.Latency > expectedLatency {
-			errMsg := fmt.Sprintf("cluster %s message latency %v over the budget %v",
-				clusterName, result.Latency, expectedLatency)
-			Alert(errMsg)
-			ReportIncident(clusterName, "persisted latency test failure", errMsg, &cluster.AlertPolicy)
-		} else {
-			log.Printf("send %d messages to topic %s on cluster %s succeeded\n",
-				len(payloads), cluster.TopicName, cluster.PulsarURL)
-			ClearIncident(clusterName)
-		}
-		PromLatencySum(MsgLatencyGaugeOpt(), clusterName, result.Latency)
+		TestTopicLatency(cluster)
 	}
 }
 
@@ -235,4 +208,65 @@ func getNames(url string) string {
 	name := strings.Split(Trim(url), ":")[1]
 	clusterName := strings.Replace(name, "//", "", -1)
 	return clusterName
+}
+
+// SingleTopicLatencyTestThread tests a message delivery in topic and measure the latency.
+func SingleTopicLatencyTestThread() {
+	topics := GetConfig().PulsarTopicConfig
+	log.Println(topics)
+
+	for _, topic := range topics {
+		log.Println(topic.Name)
+		go func(t TopicCfg) {
+			interval := TimeDuration(t.IntervalSeconds, 60, time.Second)
+			TestTopicLatency(t)
+			for {
+				select {
+				case <-time.Tick(interval):
+					TestTopicLatency(t)
+				}
+			}
+		}(topic)
+	}
+}
+
+// TestTopicLatency test generic message delivery in topics and the latency
+func TestTopicLatency(topicCfg TopicCfg) {
+	token := AssignString(topicCfg.Token, GetConfig().PulsarOpsConfig.MasterToken)
+	expectedLatency := TimeDuration(topicCfg.LatencyBudgetMs, latencyBudget, time.Millisecond)
+	prefix := "messageid"
+	payloads, maxPayloadSize := AllMsgPayloads(prefix, topicCfg.PayloadSizes, topicCfg.NumOfMessages)
+	log.Printf("send %d messages to topic %s on cluster %s with latency budget %v, %v, %d\n",
+		len(payloads), topicCfg.TopicName, topicCfg.PulsarURL, expectedLatency, topicCfg.PayloadSizes, topicCfg.NumOfMessages)
+	result, err := PubSubLatency(token, topicCfg.PulsarURL, topicCfg.TopicName, topicCfg.OutputTopic, prefix, topicCfg.ExpectedMsg, payloads, maxPayloadSize)
+
+	// uri is in the form of pulsar+ssl://useast1.gcp.kafkaesque.io:6651
+	clusterName := getNames(topicCfg.PulsarURL)
+	testName := AssignString(topicCfg.Name, pubSubSubsystem)
+	log.Printf("cluster %s has message latency %v", clusterName, result.Latency)
+	if err != nil {
+		errMsg := fmt.Sprintf("cluster %s, %s latency test Pulsar error: %v", clusterName, testName, err)
+		Alert(errMsg)
+		ReportIncident(clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
+	} else if !result.InOrderDelivery {
+		errMsg := fmt.Sprintf("cluster %s, %s test Pulsar message received out of order", clusterName, testName)
+		Alert(errMsg)
+	} else if result.Latency > expectedLatency {
+		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over the budget %v",
+			clusterName, testName, result.Latency, expectedLatency)
+		Alert(errMsg)
+		ReportIncident(clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
+	} else {
+		log.Printf("send %d messages to topic %s on %s test cluster %s succeeded\n",
+			len(payloads), topicCfg.TopicName, testName, topicCfg.PulsarURL)
+		ClearIncident(clusterName)
+	}
+	PromLatencySum(GetGaugeType(topicCfg.Name), clusterName, result.Latency)
+}
+
+func expectedMessage(payload, expected string) string {
+	if strings.HasPrefix(expected, "$") {
+		return fmt.Sprintf("%s%s", payload, expected[1:len(expected)])
+	}
+	return payload
 }

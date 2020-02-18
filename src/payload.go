@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"regexp"
 	"strconv"
@@ -53,16 +54,16 @@ func randRange(ceiling, floor int) int {
 // GenPayload generates an array of bytes with prefix string
 // and payload size. If the specified payload size is less than
 // the prefix size, the payload will just be the prefix.
-func GenPayload(prefix, size string) []byte {
+func GenPayload(prefix, size string) ([]byte, int) {
 	numOfBytes := NumOfBytes(size)
 	if len(prefix) > numOfBytes {
-		return []byte(prefix)
+		return []byte(prefix), numOfBytes
 	}
 
 	numOfBytes = numOfBytes - len(prefix)
 	p := NewPayload(numOfBytes)
 
-	return p.PrefixDefaultPayload(prefix)
+	return p.PrefixDefaultPayload(prefix), numOfBytes
 }
 
 // NewPayload returns a new Payload object with a fixed payload size
@@ -100,7 +101,8 @@ func NumOfBytes(size string) int {
 
 // AllMsgPayloads generates a series of payloads based on
 // specified payload sizes or the number of messages
-func AllMsgPayloads(prefix string, payloadSizes []string, numOfMsg int) [][]byte {
+func AllMsgPayloads(prefix string, payloadSizes []string, numOfMsg int) ([][]byte, int) {
+	maxPayloadSize := len(prefix)
 	actualNumOfMsg := 1 //default minimun one message
 	specifiedSizes := len(payloadSizes)
 	if specifiedSizes > numOfMsg {
@@ -126,11 +128,13 @@ func AllMsgPayloads(prefix string, payloadSizes []string, numOfMsg int) [][]byte
 		}
 
 		pre := fmt.Sprintf("%s-%d-", prefix, i)
-		payloads[i] = GenPayload(pre, payloadSizes[specifiedIndex])
+		size := 0
+		payloads[i], size = GenPayload(pre, payloadSizes[specifiedIndex])
+		maxPayloadSize = int(math.Max(float64(maxPayloadSize), float64(size)))
 
 	}
 
-	return payloads
+	return payloads, maxPayloadSize
 }
 
 // GetMessageID returns the message index by parsing the template payload string with a prefix.

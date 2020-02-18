@@ -61,9 +61,14 @@ type PulsarOpsCfg struct {
 
 // TopicCfg is topic configuration
 type TopicCfg struct {
+	Name            string         `json:"name"`
+	Token           string         `json:"token"`
 	LatencyBudgetMs int            `json:"latencyBudgetMs"`
 	PulsarURL       string         `json:"pulsarUrl"`
 	TopicName       string         `json:"topicName"`
+	OutputTopic     string         `json:"outputTopic"`
+	IntervalSeconds int            `json:"intervalSeconds"`
+	ExpectedMsg     string         `json:"expectedMsg"`
 	PayloadSizes    []string       `json:"payloadSizes"`
 	NumOfMessages   int            `json:"numberOfMessages"`
 	AlertPolicy     AlertPolicyCfg `json:"AlertPolicy"`
@@ -99,6 +104,7 @@ type Configuration struct {
 	PulsarOpsConfig       PulsarOpsCfg       `json:"pulsarOpsConfig"`
 	PulsarPerfConfig      PulsarPerfCfg      `json:"pulsarPerfConfig"`
 	PulsarFunctionsConfig PulsarFunctionsCfg `json:"pulsarFunctionsConfig"`
+	PulsarTopicConfig     []TopicCfg         `json:"pulsarTopicConfig"`
 	SitesConfig           SitesCfg           `json:"sitesConfig"`
 }
 

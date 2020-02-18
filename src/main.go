@@ -14,6 +14,8 @@ var (
 	cfgFile = flag.String("config", "../config/runtime.yml", "config file for monitoring")
 )
 
+type complete struct{} //emptry struct as a single for channel
+
 func main() {
 
 	flag.Parse()
@@ -21,7 +23,7 @@ func main() {
 	log.Println("config file ", effectiveCfgFile)
 	ReadConfigFile(effectiveCfgFile)
 
-	exit := make(chan bool)
+	exit := make(chan *complete)
 	cfg := GetConfig()
 
 	RunInterval(PulsarFunctions, TimeDuration(cfg.PulsarPerfConfig.IntervalSeconds, 300, time.Second))
@@ -29,6 +31,7 @@ func main() {
 	RunInterval(StartHeartBeat, TimeDuration(cfg.OpsGenieConfig.IntervalSeconds, 240, time.Second))
 	RunInterval(MeasureLatency, TimeDuration(cfg.PulsarPerfConfig.IntervalSeconds, 300, time.Second))
 	MonitorSites()
+	SingleTopicLatencyTestThread()
 
 	if cfg.PrometheusConfig.ExposeMetrics {
 		log.Printf("start to listen to http port %s", cfg.PrometheusConfig.Port)
