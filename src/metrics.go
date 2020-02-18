@@ -12,6 +12,11 @@ var (
 	summaries = make(map[string]*prometheus.SummaryVec)
 )
 
+const (
+	funcTopicSubsystem = "func_topic"
+	pubSubSubsystem    = "pubsub"
+)
+
 // This is Premetheus data modelling and naming convention
 // https://prometheus.io/docs/practices/naming/
 // https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
@@ -38,12 +43,12 @@ func SiteLatencyGaugeOpt() prometheus.GaugeOpts {
 }
 
 // MsgLatencyGaugeOpt is the description for Pulsar message latency gauge
-func MsgLatencyGaugeOpt() prometheus.GaugeOpts {
+func MsgLatencyGaugeOpt(typeName, desc string) prometheus.GaugeOpts {
 	return prometheus.GaugeOpts{
 		Namespace: "pulsar",
-		Subsystem: "pubsub",
+		Subsystem: typeName,
 		Name:      "latency_ms",
-		Help:      "Plusar message latency in ms",
+		Help:      desc,
 	}
 }
 
@@ -110,4 +115,14 @@ func PromLatencySum(opt prometheus.GaugeOpts, cluster string, latency time.Durat
 
 func getMetricKey(opt prometheus.GaugeOpts) string {
 	return fmt.Sprintf("%s-%s-%s", opt.Namespace, opt.Subsystem, opt.Name)
+}
+
+// GetGaugeType get the Prometheus Gauge Option based on type/subsystem
+func GetGaugeType(nameType string) prometheus.GaugeOpts {
+	switch nameType {
+	case funcTopicSubsystem:
+		return MsgLatencyGaugeOpt(funcTopicSubsystem, "Plusar function input output topic latency in ms")
+	default:
+		return MsgLatencyGaugeOpt(pubSubSubsystem, "Plusar message latency in ms")
+	}
 }

@@ -54,7 +54,7 @@ func TestRandBytes(t *testing.T) {
 func TestGenMultipleSamePayloadSize(t *testing.T) {
 
 	// with single payload size specified with 3 messages
-	msgs := AllMsgPayloads("messageid", []string{"20B"}, 13)
+	msgs, _ := AllMsgPayloads("messageid", []string{"20B"}, 13)
 	assert(t, 13 == len(msgs), "total messages")
 	for i := 0; i < len(msgs); i++ {
 		assert(t, 20 == len(msgs[i]), "individual message size")
@@ -65,7 +65,7 @@ func TestGenMultipleSamePayloadSize(t *testing.T) {
 func TestGenMulitplDifferentPayloads(t *testing.T) {
 
 	// with more payload size specified than the number of messages
-	msgs := AllMsgPayloads("aid", []string{"20B", "400B", "25B", "2B", "1KB"}, 3)
+	msgs, _ := AllMsgPayloads("aid", []string{"20B", "400B", "25B", "2B", "1KB"}, 3)
 	assert(t, 5 == len(msgs), "total messages")
 	for i := 0; i < len(msgs); i++ {
 		assert(t, i == GetMessageID("aid", string(msgs[i])), "check message index")
@@ -75,7 +75,7 @@ func TestGenMulitplDifferentPayloads(t *testing.T) {
 func TestGenSinglePayloads(t *testing.T) {
 
 	// with single payload size specified with 3 messages
-	msgs := AllMsgPayloads("messageid", []string{"2KB"}, 0)
+	msgs, _ := AllMsgPayloads("messageid", []string{"2KB"}, 0)
 	assert(t, 1 == len(msgs), "total messages")
 	assert(t, 2*1024 == len(msgs[0]), "individual message size")
 	messageArray := strings.Split(string(msgs[0]), PrefixDelimiter)
@@ -88,7 +88,7 @@ func TestGenSinglePayloads(t *testing.T) {
 func TestGenDefaultSinglePayload(t *testing.T) {
 
 	// no single payload size nor the number of message
-	msgs := AllMsgPayloads("yours", []string{}, 0)
+	msgs, _ := AllMsgPayloads("yours", []string{}, 0)
 	assert(t, 1 == len(msgs), "total messages")
 	assert(t, len("yours-0-") == len(msgs[0]), "individual message size")
 	messageArray := strings.Split(string(msgs[0]), PrefixDelimiter)
@@ -101,7 +101,7 @@ func TestGenDefaultSinglePayload(t *testing.T) {
 func TestGenMultipleDefaultPayloadSize(t *testing.T) {
 
 	// no single payload size nor the number of message
-	msgs := AllMsgPayloads("your", []string{}, 1002)
+	msgs, _ := AllMsgPayloads("your", []string{}, 1002)
 	assert(t, 1002 == len(msgs), "total messages")
 	for i := 0; i < len(msgs); i++ {
 		assert(t, 12 > len(msgs[i]), "individual message size")
