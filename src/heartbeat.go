@@ -14,24 +14,24 @@ var heatbeatDuration = 60 * time.Second
 
 // StartHeartBeat starts heartbeat monitoring the program by OpsGenie
 func StartHeartBeat() {
+	genieURL := AssignString(GetConfig().OpsGenieConfig.HeartBeatURL, "https://api.opsgenie.com/v2/heartbeats/latency-monitor/ping")
 	genieKey := GetConfig().OpsGenieConfig.HeartbeatKey
-	err := HeartBeatToOpsGenie(genieKey)
+	err := HeartBeatToOpsGenie(genieURL, genieKey)
 	if err != nil {
 		Alert(fmt.Sprintf("OpsGenie error %v", err))
 	}
 }
 
 // HeartBeatToOpsGenie send heart beat to ops genie
-func HeartBeatToOpsGenie(genieKey string) error {
+func HeartBeatToOpsGenie(genieURL, genieKey string) error {
 
-	opsGenieURL := "https://api.opsgenie.com/v2/heartbeats/latency-monitor/ping"
 	client := retryablehttp.NewClient()
 	client.HTTPClient.Timeout = time.Duration(5) * time.Second
 	client.RetryWaitMin = 4 * time.Second
 	client.RetryWaitMax = 64 * time.Second
 	client.RetryMax = 2
 
-	req, err := retryablehttp.NewRequest(http.MethodGet, opsGenieURL, nil)
+	req, err := retryablehttp.NewRequest(http.MethodGet, genieURL, nil)
 	if err != nil {
 		return err
 	}

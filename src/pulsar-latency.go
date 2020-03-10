@@ -107,7 +107,7 @@ func PubSubLatency(tokenStr, uri, topicName, outputTopic, msgPrefix, expectedSuf
 	//  and because no need to protect map iteration to calculate results
 	mapMutex := &sync.Mutex{}
 
-	receiveTimeout := TimeDuration(5+(maxPayloadSize/102400), 5, time.Second)
+	receiveTimeout := TimeDuration(5+(maxPayloadSize/102400), 10, time.Second)
 	go func() {
 
 		lastMessageIndex := -1 // to track the message delivery order
@@ -115,6 +115,7 @@ func PubSubLatency(tokenStr, uri, topicName, outputTopic, msgPrefix, expectedSuf
 			cCtx, cancel := context.WithTimeout(context.Background(), receiveTimeout)
 			defer cancel()
 
+			log.Printf("wait to receive on message count %d", receivedCount)
 			msg, err := consumer.Receive(cCtx)
 			if err != nil {
 				receivedCount = 0 // play safe?
@@ -188,6 +189,7 @@ func PubSubLatency(tokenStr, uri, topicName, outputTopic, msgPrefix, expectedSuf
 	case receiverLatency := <-completeChan:
 		return receiverLatency, nil
 	case reportedErr := <-errorChan:
+		log.Printf("received error %v", reportedErr)
 		return MsgResult{Latency: failedLatency}, reportedErr
 	case <-time.Tick(time.Duration(5*len(payloads)) * time.Second):
 		return MsgResult{Latency: failedLatency}, errors.New("latency measure not received after timeout")
@@ -257,7 +259,7 @@ func TestTopicLatency(topicCfg TopicCfg) {
 		Alert(errMsg)
 		ReportIncident(clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
 	} else {
-		log.Printf("send %d messages to topic %s on %s test cluster %s succeeded\n",
+		log.Printf("succeeded to sent %d messages to topic %s on %s test cluster %s\n",
 			len(payloads), topicCfg.TopicName, testName, topicCfg.PulsarURL)
 		ClearIncident(clusterName)
 	}
