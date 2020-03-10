@@ -24,6 +24,7 @@ type SlackCfg struct {
 
 // OpsGenieCfg is opsGenie key
 type OpsGenieCfg struct {
+	HeartBeatURL    string `json:"heartbeatUrl"`
 	HeartbeatKey    string `json:"heartbeatKey"`
 	AlertKey        string `json:"alertKey"`
 	IntervalSeconds int    `json:"intervalSeconds"`
