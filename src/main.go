@@ -32,6 +32,7 @@ func main() {
 	RunInterval(MeasureLatency, TimeDuration(cfg.PulsarPerfConfig.IntervalSeconds, 300, time.Second))
 	MonitorSites()
 	SingleTopicLatencyTestThread()
+	WebSocketTopicLatencyTestThread()
 
 	if cfg.PrometheusConfig.ExposeMetrics {
 		log.Printf("start to listen to http port %s", cfg.PrometheusConfig.Port)
