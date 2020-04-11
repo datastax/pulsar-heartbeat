@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -15,6 +16,7 @@ var (
 const (
 	funcTopicSubsystem = "func_topic"
 	pubSubSubsystem    = "pubsub"
+	websocketSubsystem = "websocket"
 )
 
 // This is Premetheus data modelling and naming convention
@@ -119,10 +121,13 @@ func getMetricKey(opt prometheus.GaugeOpts) string {
 
 // GetGaugeType get the Prometheus Gauge Option based on type/subsystem
 func GetGaugeType(nameType string) prometheus.GaugeOpts {
-	switch nameType {
-	case funcTopicSubsystem:
+	if nameType == funcTopicSubsystem || strings.HasPrefix(nameType, "func_topic") {
 		return MsgLatencyGaugeOpt(funcTopicSubsystem, "Plusar function input output topic latency in ms")
-	default:
-		return MsgLatencyGaugeOpt(pubSubSubsystem, "Plusar message latency in ms")
 	}
+
+	if nameType == websocketSubsystem {
+		return MsgLatencyGaugeOpt(websocketSubsystem, "Plusar websocket pubsub topic latency in ms")
+	}
+
+	return MsgLatencyGaugeOpt(pubSubSubsystem, "Plusar pubsub message latency in ms")
 }

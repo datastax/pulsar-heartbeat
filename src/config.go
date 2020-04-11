@@ -75,6 +75,23 @@ type TopicCfg struct {
 	AlertPolicy     AlertPolicyCfg `json:"AlertPolicy"`
 }
 
+// WsConfig is configuration to monitor WebSocket pub sub latency
+type WsConfig struct {
+	Name            string         `json:"name"`
+	Token           string         `json:"token"`
+	Cluster         string         `json:"cluster"`
+	LatencyBudgetMs int            `json:"latencyBudgetMs"`
+	ProducerURL     string         `json:"producerUrl"`
+	ConsumerURL     string         `json:"consumerUrl"`
+	TopicName       string         `json:"topicName"`
+	IntervalSeconds int            `json:"intervalSeconds"`
+	Scheme          string         `json:"scheme"`
+	Port            string         `json:"port"`
+	Subscription    string         `json:"subscription"`
+	URLQueryParams  string         `json:"urlQueryParams"`
+	AlertPolicy     AlertPolicyCfg `json:"AlertPolicy"`
+}
+
 // PulsarPerfCfg is configuration to monitor Pulsar pub sub latency
 type PulsarPerfCfg struct {
 	Token           string     `json:"token"`
@@ -107,6 +124,7 @@ type Configuration struct {
 	PulsarFunctionsConfig PulsarFunctionsCfg `json:"pulsarFunctionsConfig"`
 	PulsarTopicConfig     []TopicCfg         `json:"pulsarTopicConfig"`
 	SitesConfig           SitesCfg           `json:"sitesConfig"`
+	WebSocketConfig       []WsConfig         `json:"webSocketConfig"`
 }
 
 // AlertPolicyCfg is a set of criteria to evaluation triggers for incident alert
