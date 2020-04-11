@@ -88,6 +88,7 @@ type WsConfig struct {
 	Scheme          string         `json:"scheme"`
 	Port            string         `json:"port"`
 	Subscription    string         `json:"subscription"`
+	URLQueryParams  string         `json:"urlQueryParams"`
 	AlertPolicy     AlertPolicyCfg `json:"AlertPolicy"`
 }
 

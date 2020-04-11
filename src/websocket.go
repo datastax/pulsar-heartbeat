@@ -45,7 +45,19 @@ func (w *WsConfig) reconcileConfig() error {
 			w.ConsumerURL = w.ConsumerURL + "ws-latency-subscription"
 		}
 	}
+
+	if w.URLQueryParams != "" {
+		w.ConsumerURL = w.ConsumerURL + "?" + w.URLQueryParams
+		w.ProducerURL = w.ProducerURL + "?" + w.URLQueryParams
+	}
 	return nil
+}
+
+func tokenAsURLQueryParam(url, token string) string {
+	if strings.HasSuffix(url, "?token=") {
+		return url + token
+	}
+	return url
 }
 
 // WsLatencyTest latency test for websocket
@@ -55,15 +67,17 @@ func WsLatencyTest(producerURL, subscriptionURL, token string) (MsgResult, error
 		bearerToken := "Bearer " + token
 		wsHeaders.Add("Authorization", bearerToken)
 	}
+	prodURL := tokenAsURLQueryParam(producerURL, token)
+	subsURL := tokenAsURLQueryParam(subscriptionURL, token)
 
-	log.Printf("wss producer connection url %s\n\t\tconsumer url %s\n", producerURL, subscriptionURL)
-	prodConn, _, err := websocket.DefaultDialer.Dial(producerURL, wsHeaders)
+	log.Printf("wss producer connection url %s\n\t\tconsumer url %s\n", prodURL, subsURL)
+	prodConn, _, err := websocket.DefaultDialer.Dial(prodURL, wsHeaders)
 	if err != nil {
 		return MsgResult{Latency: failedLatency}, err
 	}
 	defer prodConn.Close()
 
-	consConn, _, err := websocket.DefaultDialer.Dial(subscriptionURL, wsHeaders)
+	consConn, _, err := websocket.DefaultDialer.Dial(subsURL, wsHeaders)
 	if err != nil {
 		return MsgResult{Latency: failedLatency}, err
 	}
