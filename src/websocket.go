@@ -84,7 +84,8 @@ func WsLatencyTest(producerURL, subscriptionURL, token string) (MsgResult, error
 	defer consConn.Close()
 
 	errChan := make(chan error)
-	defer close(errChan)
+	// do not close errChan since there could be timing issue for Consumer listener to send after the close()
+	// GC will do the clean up
 
 	// notify the main thread with the latency to complete the exit
 	completeChan := make(chan time.Time, 1)
@@ -94,6 +95,12 @@ func WsLatencyTest(producerURL, subscriptionURL, token string) (MsgResult, error
 
 	// Consumer listener
 	go func(expectedMsg string) {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("Recovered from websocket consumer listener panic %v \n", r)
+			}
+		}()
+
 		for wait := true; wait; {
 			var msg ReceivingMessage
 			err := consConn.ReadJSON(&msg)
