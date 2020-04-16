@@ -33,25 +33,29 @@ func PubSubLatency(tokenStr, uri, topicName, outputTopic, msgPrefix, expectedSuf
 	// uri is in the form of pulsar+ssl://useast1.gcp.kafkaesque.io:6651
 	client, ok := clients[uri]
 	if !ok {
+		clientOpt := pulsar.ClientOptions{
+			URL:               uri,
+			OperationTimeout:  30 * time.Second,
+			ConnectionTimeout: 30 * time.Second,
+		}
 
-		// Configuration variables pertaining to this consumer
-		// RHEL CentOS:
-		trustStore := AssignString(GetConfig().PulsarPerfConfig.TrustStore, "/etc/ssl/certs/ca-bundle.crt")
-		// Debian Ubuntu:
-		// trustStore := '/etc/ssl/certs/ca-certificates.crt'
-		// OSX:
-		// Export the default certificates to a file, then use that file:
-		// security find-certificate -a -p /System/Library/Keychains/SystemCACertificates.keychain > ./ca-certificates.crt
-		// trust_certs='./ca-certificates.crt'
+		if tokenStr != "" {
+			clientOpt.Authentication = pulsar.NewAuthenticationToken(tokenStr)
+		}
 
-		token := pulsar.NewAuthenticationToken(tokenStr)
+		if strings.HasPrefix(uri, "pulsar+ssl://") {
+			trustStore := AssignString(GetConfig().PulsarPerfConfig.TrustStore, "/etc/ssl/certs/ca-bundle.crt")
+			if trustStore == "" {
+				panic("this is fatal that we are missing trustStore while pulsar+ssl is required")
+			}
+			clientOpt.TLSTrustCertsFilePath = trustStore
+		}
 
 		var err error
-		client, err = pulsar.NewClient(pulsar.ClientOptions{
-			URL:                   uri,
-			Authentication:        token,
-			TLSTrustCertsFilePath: trustStore,
-		})
+		client, err = pulsar.NewClient(clientOpt)
+		if err != nil {
+			return MsgResult{Latency: failedLatency}, err
+		}
 
 		if err != nil {
 			return MsgResult{Latency: failedLatency}, err
