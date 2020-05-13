@@ -70,7 +70,7 @@ func WsLatencyTest(producerURL, subscriptionURL, token string) (MsgResult, error
 	prodURL := tokenAsURLQueryParam(producerURL, token)
 	subsURL := tokenAsURLQueryParam(subscriptionURL, token)
 
-	log.Printf("wss producer connection url %s\n\t\tconsumer url %s\n", prodURL, subsURL)
+	// log.Printf("wss producer connection url %s\n\t\tconsumer url %s\n", prodURL, subsURL)
 	prodConn, _, err := websocket.DefaultDialer.Dial(prodURL, wsHeaders)
 	if err != nil {
 		return MsgResult{Latency: failedLatency}, err
@@ -134,11 +134,11 @@ func WsLatencyTest(producerURL, subscriptionURL, token string) (MsgResult, error
 	go func() {
 		_, rawBytes, err := prodConn.ReadMessage()
 		if err != nil {
-			log.Printf("producer received benign error: %v\n", err)
+			log.Printf("websocket producer received benign error: %v\n", err)
 			return
 		}
 		byteMessage, err := base64.StdEncoding.DecodeString(string(rawBytes))
-		log.Printf("producer received response: %s", string(byteMessage))
+		log.Printf("websocket producer received response: %s", string(byteMessage))
 	}()
 
 	encodedText := base64.StdEncoding.EncodeToString([]byte(messageText))
@@ -177,11 +177,11 @@ func TestWsLatency(config WsConfig) {
 		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over the budget %v",
 			config.Cluster, config.Name, result.Latency, expectedLatency)
 		Alert(errMsg)
-		ReportIncident(config.Cluster, "persisted latency test failure", errMsg, &config.AlertPolicy)
+		ReportIncident(config.Name, config.Cluster, "persisted latency test failure", errMsg, &config.AlertPolicy)
 	} else {
 		log.Printf("websocket pubsub succeeded with latency %v expected latency %v on topic %s, cluster %s\n",
 			result.Latency, expectedLatency, config.TopicName, config.Cluster)
-		ClearIncident(config.Cluster)
+		ClearIncident(config.Name)
 	}
 
 	PromLatencySum(GetGaugeType(websocketSubsystem), config.Cluster, result.Latency)

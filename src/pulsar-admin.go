@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
@@ -56,20 +58,25 @@ func PulsarTenants() {
 	token := GetConfig().PulsarOpsConfig.MasterToken
 
 	for _, cluster := range clusters {
-		clusterURL := "https://kafkaesque.io/api/v1/" + cluster.Name + "/tenants/"
-		tenantSize, err := PulsarAdminTenant(clusterURL, token)
+		adminURL, err := url.ParseRequestURI(cluster.URL)
 		if err != nil {
-			errMsg := fmt.Sprintf("tenant-test failed on cluster %s error: %v", cluster.Name, err)
+			panic(err) //panic because this is a showstopper
+		}
+		clusterName := adminURL.Hostname()
+		queryURL := SingleSlashJoin(cluster.URL, "/admin/v2/tenants")
+		tenantSize, err := PulsarAdminTenant(queryURL, token)
+		if err != nil {
+			errMsg := fmt.Sprintf("tenant-test failed on cluster %s error: %v", queryURL, err)
 			Alert(errMsg)
-			ReportIncident(cluster.Name, "persisted cluster tenants test failure", errMsg, &cluster.AlertPolicy)
+			ReportIncident(cluster.Name, clusterName, "persisted cluster tenants test failure", errMsg, &cluster.AlertPolicy)
 		} else {
 			PromGaugeInt(TenantsGaugeOpt(), cluster.Name, tenantSize)
 			ClearIncident(cluster.Name)
 			if tenantSize == 0 {
 				Alert(fmt.Sprintf("%s has incorrect number of tenants 0", cluster.Name))
+			} else {
+				log.Printf("cluster %s has %d numbers of tenants", clusterName, tenantSize)
 			}
 		}
 	}
 }
-
-// TODO: add broker stats "https://kafkaesque.io/api/v1/" + cluster + "/broker-stats/load-report/"

@@ -50,6 +50,7 @@ type SitesCfg struct {
 // OpsClusterCfg is each cluster's configuration
 type OpsClusterCfg struct {
 	Name        string         `json:"name"`
+	URL         string         `json:"url"`
 	AlertPolicy AlertPolicyCfg `json:"alertPolicy"`
 }
 
@@ -79,7 +80,7 @@ type TopicCfg struct {
 type WsConfig struct {
 	Name            string         `json:"name"`
 	Token           string         `json:"token"`
-	Cluster         string         `json:"cluster"`
+	Cluster         string         `json:"cluster"` // can be used for alert de-dupe
 	LatencyBudgetMs int            `json:"latencyBudgetMs"`
 	ProducerURL     string         `json:"producerUrl"`
 	ConsumerURL     string         `json:"consumerUrl"`

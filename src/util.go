@@ -189,3 +189,16 @@ func RandStringBytes(n int) []byte {
 	}
 	return b
 }
+
+// SingleSlashJoin joins two parts of url path with no double slash
+func SingleSlashJoin(a, b string) string {
+	aslash := strings.HasSuffix(a, "/")
+	bslash := strings.HasPrefix(b, "/")
+	switch {
+	case aslash && bslash:
+		return a + b[1:]
+	case !aslash && !bslash:
+		return a + "/" + b
+	}
+	return a + b
+}

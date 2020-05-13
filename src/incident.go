@@ -35,6 +35,7 @@ type Incident struct {
 	Description string   `json:"description"`
 	Priority    string   `json:"priority"`
 	Entity      string   `json:"entity"`
+	Alias       string   `json:"alias"`
 	Tags        []string `json:"tags"`
 }
 
@@ -111,9 +112,9 @@ func trackIncident(component, msg, desc string, eval *AlertPolicyCfg) bool {
 }
 
 // ReportIncident reports an incident
-func ReportIncident(component, msg, desc string, eval *AlertPolicyCfg) {
+func ReportIncident(component, alias, msg, desc string, eval *AlertPolicyCfg) {
 	if eval.Ceiling > 0 && trackIncident(component, msg, desc, eval) {
-		CreateIncident(component, msg, desc, "P2")
+		CreateIncident(component, alias, msg, desc, "P2")
 	}
 }
 
@@ -127,7 +128,7 @@ func ClearIncident(component string) {
 }
 
 // NewIncident creates a Incident object
-func NewIncident(component, msg, desc, priority string) Incident {
+func NewIncident(component, alias, msg, desc, priority string) Incident {
 	p := "P2" //default priority
 	if StrContains(AllowedPriorities, priority) {
 		p = priority
@@ -137,14 +138,15 @@ func NewIncident(component, msg, desc, priority string) Incident {
 		Description: desc,
 		Priority:    p,
 		Entity:      component,
+		Alias:       alias,
 		Tags:        []string{"ops-monitor", component},
 	}
 }
 
 // CreateIncident creates incident
-func CreateIncident(component, msg, desc, priority string) {
+func CreateIncident(component, alias, msg, desc, priority string) {
 	genieKey := GetConfig().OpsGenieConfig.AlertKey
-	err := CreateOpsGenieAlert(NewIncident(component, msg, desc, priority), genieKey)
+	err := CreateOpsGenieAlert(NewIncident(component, alias, msg, desc, priority), genieKey)
 	if err != nil {
 		Alert(fmt.Sprintf("Opsgenie report incident error %v", err))
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -208,14 +209,6 @@ func MeasureLatency() {
 	}
 }
 
-// getNames in the format for reporting and Prometheus metrics
-// Input URL pulsar+ssl://useast1.gcp.kafkaesque.io:6651
-func getNames(url string) string {
-	name := strings.Split(Trim(url), ":")[1]
-	clusterName := strings.Replace(name, "//", "", -1)
-	return clusterName
-}
-
 // SingleTopicLatencyTestThread tests a message delivery in topic and measure the latency.
 func SingleTopicLatencyTestThread() {
 	topics := GetConfig().PulsarTopicConfig
@@ -238,6 +231,13 @@ func SingleTopicLatencyTestThread() {
 
 // TestTopicLatency test generic message delivery in topics and the latency
 func TestTopicLatency(topicCfg TopicCfg) {
+	// uri is in the form of pulsar+ssl://useast1.gcp.kafkaesque.io:6651
+	adminURL, err := url.ParseRequestURI(topicCfg.PulsarURL)
+	if err != nil {
+		panic(err) //panic because this is a showstopper
+	}
+	clusterName := adminURL.Hostname()
+
 	token := AssignString(topicCfg.Token, GetConfig().PulsarOpsConfig.MasterToken)
 	expectedLatency := TimeDuration(topicCfg.LatencyBudgetMs, latencyBudget, time.Millisecond)
 	prefix := "messageid"
@@ -246,14 +246,12 @@ func TestTopicLatency(topicCfg TopicCfg) {
 		len(payloads), topicCfg.TopicName, topicCfg.PulsarURL, expectedLatency, topicCfg.PayloadSizes, topicCfg.NumOfMessages)
 	result, err := PubSubLatency(token, topicCfg.PulsarURL, topicCfg.TopicName, topicCfg.OutputTopic, prefix, topicCfg.ExpectedMsg, payloads, maxPayloadSize)
 
-	// uri is in the form of pulsar+ssl://useast1.gcp.kafkaesque.io:6651
-	clusterName := getNames(topicCfg.PulsarURL)
 	testName := AssignString(topicCfg.Name, pubSubSubsystem)
 	log.Printf("cluster %s has message latency %v", clusterName, result.Latency)
 	if err != nil {
 		errMsg := fmt.Sprintf("cluster %s, %s latency test Pulsar error: %v", clusterName, testName, err)
 		Alert(errMsg)
-		ReportIncident(clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
+		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
 	} else if !result.InOrderDelivery {
 		errMsg := fmt.Sprintf("cluster %s, %s test Pulsar message received out of order", clusterName, testName)
 		Alert(errMsg)
@@ -261,7 +259,7 @@ func TestTopicLatency(topicCfg TopicCfg) {
 		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over the budget %v",
 			clusterName, testName, result.Latency, expectedLatency)
 		Alert(errMsg)
-		ReportIncident(clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
+		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
 	} else {
 		log.Printf("succeeded to sent %d messages to topic %s on %s test cluster %s\n",
 			len(payloads), topicCfg.TopicName, testName, topicCfg.PulsarURL)
