@@ -15,12 +15,17 @@ import (
 // report incident which usually is high level of escalation and paging
 // incident tracker and policy are NOT thread safe struct and map.
 
+type incidentRecord struct {
+	requestID string
+	createdAt time.Time
+}
+
 var (
 	// AllowedPriorities a list of allowed priorities
 	AllowedPriorities = []string{"P1", "P2", "P3", "P4", "P5"}
 
 	// key is incident identifier, value is OpsGenie requestId for delete purpose
-	incidents = make(map[string]string)
+	incidents = make(map[string]incidentRecord)
 
 	incidentTrackers = make(map[string]*IncidentAlertPolicy)
 )
@@ -115,11 +120,14 @@ func trackIncident(component, msg, desc string, eval *AlertPolicyCfg) bool {
 func ReportIncident(component, alias, msg, desc string, eval *AlertPolicyCfg) {
 	if eval.Ceiling > 0 && trackIncident(component, msg, desc, eval) {
 		CreateIncident(component, alias, msg, desc, "P2")
+		AnalyticsReportIncident(component, alias, msg, desc)
 	}
 }
 
 // ClearIncident clears an incident
 func ClearIncident(component string) {
+	RemoveIncident(component)
+
 	if tracker, ok := incidentTrackers[component]; ok {
 		if tracker.clear() == 0 {
 			delete(incidentTrackers, component)
@@ -153,15 +161,17 @@ func CreateIncident(component, alias, msg, desc, priority string) {
 }
 
 // RemoveIncident removes an existing incident
-// TODO this is not being used since we have no concrete scenario how to clear alerts
 func RemoveIncident(component string) {
-	if requestID, ok := incidents[component]; ok {
+	if record, ok := incidents[component]; ok {
+		delete(incidents, component)
+		seconds := int(time.Since(record.createdAt).Seconds())
+		AnalyticsClearIncident(component, seconds)
+
 		genieKey := GetConfig().OpsGenieConfig.AlertKey
-		err := DeleteOpsGenieAlert(component, requestID, genieKey)
+		err := DeleteOpsGenieAlert(component, record.requestID, genieKey)
 		if err != nil {
 			Alert(fmt.Sprintf("Opsgenie remove incident error %v", err))
 		}
-		delete(incidents, component)
 	}
 }
 
@@ -212,11 +222,14 @@ func CreateOpsGenieAlert(msg Incident, genieKey string) error {
 		return err
 	}
 
-	incidents[msg.Entity] = alertResp.RequestID
+	incidents[msg.Entity] = incidentRecord{
+		requestID: alertResp.RequestID,
+		createdAt: time.Now(),
+	}
 	return nil
 }
 
-// DeleteOpsGenieAlert creates an OpsGenie alert
+// DeleteOpsGenieAlert deletes an OpsGenie alert
 // TODO this is not being used since we have no concrete scenario how to clear alerts
 func DeleteOpsGenieAlert(component, requestID string, genieKey string) error {
 	client := retryablehttp.NewClient()

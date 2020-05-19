@@ -17,17 +17,25 @@ type PrometheusCfg struct {
 	ExposeMetrics bool   `json:"exposeMetrics"`
 }
 
-// SlackCfg is slack key
+// SlackCfg is slack configuration
 type SlackCfg struct {
 	AlertURL string `json:"alertUrl"`
 }
 
-// OpsGenieCfg is opsGenie key
+// OpsGenieCfg is opsGenie configuration
 type OpsGenieCfg struct {
 	HeartBeatURL    string `json:"heartbeatUrl"`
 	HeartbeatKey    string `json:"heartbeatKey"`
 	AlertKey        string `json:"alertKey"`
 	IntervalSeconds int    `json:"intervalSeconds"`
+}
+
+// AnalyticsCfg is analytics usage and statistucs tracking configuraiton
+type AnalyticsCfg struct {
+	APIKey            string `json:"apiKey"`
+	IngestionURL      string `json:"ingestionUrl"`
+	InsightsWriteKey  string `json:"insightsWriteKey"`
+	InsightsAccountID string `json:"insightsAccountId"`
 }
 
 // SiteCfg configures general website
@@ -117,6 +125,8 @@ type PulsarFunctionsCfg struct {
 
 // Configuration - this server's configuration
 type Configuration struct {
+	Name                  string             `json:"name"`
+	AnalyticsConfig       AnalyticsCfg       `json:"analyticsConfig"`
 	PrometheusConfig      PrometheusCfg      `json:"prometheusConfig"`
 	SlackConfig           SlackCfg           `json:"slackConfig"`
 	OpsGenieConfig        OpsGenieCfg        `json:"opsGenieConfig"`
