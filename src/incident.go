@@ -116,11 +116,14 @@ func trackIncident(component, msg, desc string, eval *AlertPolicyCfg) bool {
 	return rc
 }
 
-// ReportIncident reports an incident
-func ReportIncident(component, alias, msg, desc string, eval *AlertPolicyCfg) {
+// ReportIncident reports an incident. sendHeartbeat is only required if a heartbeat needs to be sent to uptime tracking
+func ReportIncident(component, alias, msg, desc string, eval *AlertPolicyCfg, sendHeartbeat bool) {
 	if eval.Ceiling > 0 && trackIncident(component, msg, desc, eval) {
 		CreateIncident(component, alias, msg, desc, "P2")
 		AnalyticsReportIncident(component, alias, msg, desc)
+	} else if sendHeartbeat {
+		// only send if it is required and with no incident report
+		AnalyticsHeartbeat(component)
 	}
 }
 

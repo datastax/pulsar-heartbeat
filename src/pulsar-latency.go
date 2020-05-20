@@ -248,11 +248,12 @@ func TestTopicLatency(topicCfg TopicCfg) {
 
 	testName := AssignString(topicCfg.Name, pubSubSubsystem)
 	log.Printf("cluster %s has message latency %v", clusterName, result.Latency)
-	AnalyticsHeartbeat(clusterName)
+	reportHearbeat := true
 	if err != nil {
 		errMsg := fmt.Sprintf("cluster %s, %s latency test Pulsar error: %v", clusterName, testName, err)
 		Alert(errMsg)
-		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
+		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy, true)
+		reportHearbeat = false // ReportIncident() ^ can still report heartbeat as long as the limit is not reached/no incident
 	} else if !result.InOrderDelivery {
 		errMsg := fmt.Sprintf("cluster %s, %s test Pulsar message received out of order", clusterName, testName)
 		AnalyticsLatencyReport(clusterName, testName, "message delivery out of order", int(result.Latency.Milliseconds()), false, true)
@@ -262,12 +263,15 @@ func TestTopicLatency(topicCfg TopicCfg) {
 			clusterName, testName, result.Latency, expectedLatency)
 		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, false)
 		Alert(errMsg)
-		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
+		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy, false)
 	} else {
 		log.Printf("succeeded to sent %d messages to topic %s on %s test cluster %s\n",
 			len(payloads), topicCfg.TopicName, testName, topicCfg.PulsarURL)
 		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, true)
 		ClearIncident(clusterName)
+	}
+	if reportHearbeat {
+		AnalyticsHeartbeat(clusterName)
 	}
 	PromLatencySum(GetGaugeType(topicCfg.Name), clusterName, result.Latency)
 }

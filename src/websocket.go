@@ -177,7 +177,7 @@ func TestWsLatency(config WsConfig) {
 		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over the budget %v",
 			config.Cluster, config.Name, result.Latency, expectedLatency)
 		Alert(errMsg)
-		ReportIncident(config.Name, config.Cluster, "persisted latency test failure", errMsg, &config.AlertPolicy)
+		ReportIncident(config.Name, config.Cluster, "persisted latency test failure", errMsg, &config.AlertPolicy, false)
 	} else {
 		log.Printf("websocket pubsub succeeded with latency %v expected latency %v on topic %s, cluster %s\n",
 			result.Latency, expectedLatency, config.TopicName, config.Cluster)
