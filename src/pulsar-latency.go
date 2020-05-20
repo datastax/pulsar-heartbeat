@@ -253,6 +253,7 @@ func TestTopicLatency(topicCfg TopicCfg) {
 		errMsg := fmt.Sprintf("cluster %s, %s latency test Pulsar error: %v", clusterName, testName, err)
 		Alert(errMsg)
 		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy, true)
+		AnalyticsLatencyReport(clusterName, testName, err.Error(), -1, false, false)
 		reportHearbeat = false // ReportIncident() ^ can still report heartbeat as long as the limit is not reached/no incident
 	} else if !result.InOrderDelivery {
 		errMsg := fmt.Sprintf("cluster %s, %s test Pulsar message received out of order", clusterName, testName)
