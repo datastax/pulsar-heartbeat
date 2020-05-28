@@ -27,6 +27,11 @@ var (
 	// key is incident identifier, value is OpsGenie requestId for delete purpose
 	incidents = make(map[string]incidentRecord)
 
+	// track the downtime, since downtime won't be calculated when producing message works
+	// it has different defintion than incident
+	// this is only applicable when Pulsar Monitor is deployed within a Pulsar cluster
+	downtimeTracker = make(map[string]incidentRecord)
+
 	incidentTrackers = make(map[string]*IncidentAlertPolicy)
 )
 
@@ -116,14 +121,11 @@ func trackIncident(component, msg, desc string, eval *AlertPolicyCfg) bool {
 	return rc
 }
 
-// ReportIncident reports an incident. sendHeartbeat is only required if a heartbeat needs to be sent to uptime tracking
-func ReportIncident(component, alias, msg, desc string, eval *AlertPolicyCfg, sendHeartbeat bool) {
+// ReportIncident reports an incident.
+func ReportIncident(component, alias, msg, desc string, eval *AlertPolicyCfg) {
 	if eval.Ceiling > 0 && trackIncident(component, msg, desc, eval) {
 		CreateIncident(component, alias, msg, desc, "P2")
 		AnalyticsReportIncident(component, alias, msg, desc)
-	} else if sendHeartbeat {
-		// only send if it is required and with no incident report
-		AnalyticsHeartbeat(component)
 	}
 }
 
@@ -178,6 +180,15 @@ func RemoveIncident(component string) {
 	}
 }
 
+// CalculateDowntime calculate downtime
+func CalculateDowntime(component string) {
+	if record, ok := downtimeTracker[component]; ok {
+		delete(downtimeTracker, component)
+		seconds := int(time.Since(record.createdAt).Seconds())
+		AnalyticsDowntime(component, seconds)
+	}
+}
+
 // CreateOpsGenieAlert creates an OpsGenie alert
 func CreateOpsGenieAlert(msg Incident, genieKey string) error {
 	Alert(fmt.Sprintf("report incident as pager escalation %v", msg))
@@ -225,10 +236,12 @@ func CreateOpsGenieAlert(msg Incident, genieKey string) error {
 		return err
 	}
 
-	incidents[msg.Entity] = incidentRecord{
+	incident := incidentRecord{
 		requestID: alertResp.RequestID,
 		createdAt: time.Now(),
 	}
+	incidents[msg.Entity] = incident
+	downtimeTracker[msg.Entity] = incident
 	return nil
 }
 

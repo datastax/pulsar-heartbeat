@@ -68,7 +68,7 @@ func PulsarTenants() {
 		if err != nil {
 			errMsg := fmt.Sprintf("tenant-test failed on cluster %s error: %v", queryURL, err)
 			Alert(errMsg)
-			ReportIncident(cluster.Name, clusterName, "persisted cluster tenants test failure", errMsg, &cluster.AlertPolicy, false)
+			ReportIncident(cluster.Name, clusterName, "persisted cluster tenants test failure", errMsg, &cluster.AlertPolicy)
 		} else {
 			PromGaugeInt(TenantsGaugeOpt(), cluster.Name, tenantSize)
 			ClearIncident(cluster.Name)

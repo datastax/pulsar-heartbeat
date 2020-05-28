@@ -105,6 +105,15 @@ type HeartbeatEvent struct {
 	Env       string    `json:"env"`
 }
 
+// DowntimeReportEvent event
+type DowntimeReportEvent struct {
+	EventType       string    `json:"eventType"`
+	Timestamp       time.Time `json:"timestamp"`
+	Cluster         string    `json:"cluster"`
+	DowntimeSeconds int       `json:"downtimeSeconds"`
+	Env             string    `json:"env"`
+}
+
 const (
 	// event name
 	reportIncident = "Report Incident"
@@ -112,6 +121,7 @@ const (
 	appStart       = "App Start"
 	latencyReport  = "Latency Report"
 	heartBeat      = "Heartbeat"
+	downtimeReport = "Downtime Report"
 )
 
 var client *insights.InsertClient
@@ -300,5 +310,16 @@ func AnalyticsHeartbeat(deviceID string) {
 		Timestamp: time.Now(),
 		Cluster:   deviceID,
 		Env:       env,
+	})
+}
+
+// AnalyticsDowntime reports downtime
+func AnalyticsDowntime(deviceID string, downtimeSeconds int) {
+	go sendToInsights(DowntimeReportEvent{
+		EventType:       downtimeReport,
+		Timestamp:       time.Now(),
+		Cluster:         deviceID,
+		Env:             env,
+		DowntimeSeconds: downtimeSeconds,
 	})
 }

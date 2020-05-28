@@ -32,6 +32,7 @@ func main() {
 	RunInterval(PulsarFunctions, TimeDuration(cfg.PulsarPerfConfig.IntervalSeconds, 300, time.Second))
 	RunInterval(PulsarTenants, TimeDuration(cfg.PulsarOpsConfig.IntervalSeconds, 120, time.Second))
 	RunInterval(StartHeartBeat, TimeDuration(cfg.OpsGenieConfig.IntervalSeconds, 240, time.Second))
+	RunInterval(UptimeHeartBeat, 30*time.Second)
 	RunInterval(MeasureLatency, TimeDuration(cfg.PulsarPerfConfig.IntervalSeconds, 300, time.Second))
 	MonitorSites()
 	SingleTopicLatencyTestThread()

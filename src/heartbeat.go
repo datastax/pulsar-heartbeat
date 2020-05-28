@@ -10,8 +10,6 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 )
 
-var heatbeatDuration = 60 * time.Second
-
 // StartHeartBeat starts heartbeat monitoring the program by OpsGenie
 func StartHeartBeat() {
 	genieURL := AssignString(GetConfig().OpsGenieConfig.HeartBeatURL, "https://api.opsgenie.com/v2/heartbeats/latency-monitor/ping")
@@ -20,6 +18,11 @@ func StartHeartBeat() {
 	if err != nil {
 		Alert(fmt.Sprintf("OpsGenie error %v", err))
 	}
+}
+
+// UptimeHeartBeat sends heartbeat to uptime counter
+func UptimeHeartBeat() {
+	AnalyticsHeartbeat(GetConfig().Name)
 }
 
 // HeartBeatToOpsGenie send heart beat to ops genie

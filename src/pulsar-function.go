@@ -78,7 +78,7 @@ func PulsarFunctions() {
 		if err != nil {
 			errMsg := fmt.Sprintf("trigger-function failed on cluster %s error: %v", name, err)
 			Alert(errMsg)
-			ReportIncident(name, name, "persisted trigger-function failure", errMsg, &cluster.AlertPolicy, false)
+			ReportIncident(name, name, "persisted trigger-function failure", errMsg, &cluster.AlertPolicy)
 		} else {
 			ClearIncident(name)
 		}
