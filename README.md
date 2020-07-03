@@ -32,13 +32,13 @@ The runtime.json file must be mounted as /app/runtime.json
 
 This runs a multi stage build that produces a 18MB docker image.
 ```
-$ sudo docker build -t pulsar-ops-monitor .
+$ sudo docker build -t pulsar-monitor .
 ```
 
 Run docker container with Pulsar CA certificate and expose Prometheus metrics for collection.
 
 ``` bash
-$ sudo docker run -d -it -v /home/ming/go/src/gitlab.com/operation-monitor/config/runtime.yml:/config/runtime.yml -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-bundle.crt -p 8080:8080 --name=pulsar-monitor pulsar-ops-monitor
+$ sudo docker run -d -it -v $HOME/go/src/github.com/kafkaesque-io/pulsar-monitor/config/runtime.yml:/config/runtime.yml -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-bundle.crt -p 8080:8080 --name=pulsar-monitor pulsar-monitor
 ```
 
 ## Prometheus

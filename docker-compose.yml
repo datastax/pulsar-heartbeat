@@ -1,10 +1,10 @@
-version: '2'
+version: '3'
 
 services:
   pulsar-monitor:
-    image: 'kafkaesqueio/pulsar-ops-monitor:0.27'
+    image: 'kafkaesqueio/pulsar-monitor:1.0.5'
     ports:
       - '8080:8080'
     volumes:
-      - './config/pulsar-ca.cert:/etc/ssl/certs/ca-bundle.crt'
+      - './config/kesque-pulsar.cert:/etc/ssl/certs/ca-bundle.crt'
       - './config/runtime.yml:/config/runtime.yml'

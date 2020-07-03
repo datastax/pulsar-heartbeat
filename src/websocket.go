@@ -166,7 +166,7 @@ func WsLatencyTest(producerURL, subscriptionURL, token string) (MsgResult, error
 
 // TestWsLatency test all clusters' websocket pub sub latency
 func TestWsLatency(config WsConfig) {
-	token := AssignString(config.Token, GetConfig().PulsarOpsConfig.MasterToken)
+	token := AssignString(config.Token, GetConfig().Token)
 	expectedLatency := TimeDuration(config.LatencyBudgetMs, 2*latencyBudget, time.Millisecond)
 
 	result, err := WsLatencyTest(config.ProducerURL, config.ConsumerURL, token)

@@ -54,8 +54,8 @@ func PulsarAdminTenant(clusterURL, token string) (int, error) {
 
 // PulsarTenants get a list of tenants on each cluster
 func PulsarTenants() {
-	clusters := GetConfig().PulsarOpsConfig.Clusters
-	token := GetConfig().PulsarOpsConfig.MasterToken
+	clusters := GetConfig().PulsarAdminConfig.Clusters
+	token := AssignString(GetConfig().PulsarAdminConfig.Token, GetConfig().Token)
 
 	for _, cluster := range clusters {
 		adminURL, err := url.ParseRequestURI(cluster.URL)

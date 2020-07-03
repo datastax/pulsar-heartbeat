@@ -9,7 +9,6 @@
 # absolute directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-BASE_PKG_DIR="github.com/p2/src/"
 ALL_PKGS=""
 
 cd $DIR/../src
@@ -21,5 +20,5 @@ go vet ./...
 
 echo run go build
 mkdir -p ${DIR}/../bin
-rm -f ${DIR}/../bin/main
-go build -o ${DIR}/../bin/main .
+rm -f ${DIR}/../bin/pulsar-monitor
+go build -o ${DIR}/../bin/pulsar-monitor .

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/apache/pulsar-client-go/pulsar"
+	"github.com/kafkaesque-io/pulsar-monitor/src/stats"
 )
 
 const (
@@ -20,6 +21,9 @@ const (
 
 var (
 	clients = make(map[string]pulsar.Client)
+
+	// key is the cluster name
+	clusterStdStore = make(map[string]*stats.StandardDeviation)
 )
 
 // MsgResult stores the result of message test
@@ -45,7 +49,7 @@ func PubSubLatency(clusterName, tokenStr, uri, topicName, outputTopic, msgPrefix
 		}
 
 		if strings.HasPrefix(uri, "pulsar+ssl://") {
-			trustStore := AssignString(GetConfig().PulsarPerfConfig.TrustStore, "/etc/ssl/certs/ca-bundle.crt")
+			trustStore := AssignString(GetConfig().TrustStore, "/etc/ssl/certs/ca-bundle.crt")
 			if trustStore == "" {
 				panic("this is fatal that we are missing trustStore while pulsar+ssl is required")
 			}
@@ -82,6 +86,9 @@ func PubSubLatency(clusterName, tokenStr, uri, topicName, outputTopic, msgPrefix
 	defer producer.Close()
 
 	subscriptionName := "latency-measure"
+
+	// use the same input topic if outputTopic does not exist
+	// Two topic use case could be for Pulsar function test
 	consumerTopic := AssignString(outputTopic, topicName)
 	consumer, err := client.Subscribe(pulsar.ConsumerOptions{
 		Topic:                       consumerTopic,
@@ -202,16 +209,8 @@ func PubSubLatency(clusterName, tokenStr, uri, topicName, outputTopic, msgPrefix
 	}
 }
 
-// MeasureLatency measures pub sub latency of each cluster
-// TODO: merge this function with TopicBasedLatencyTest
-func MeasureLatency() {
-	for _, cluster := range GetConfig().PulsarPerfConfig.TopicCfgs {
-		TestTopicLatency(cluster)
-	}
-}
-
-// SingleTopicLatencyTestThread tests a message delivery in topic and measure the latency.
-func SingleTopicLatencyTestThread() {
+// TopicLatencyTestThread tests a message delivery in topic and measure the latency.
+func TopicLatencyTestThread() {
 	topics := GetConfig().PulsarTopicConfig
 	log.Println(topics)
 
@@ -239,7 +238,14 @@ func TestTopicLatency(topicCfg TopicCfg) {
 	}
 	clusterName := adminURL.Hostname()
 
-	token := AssignString(topicCfg.Token, GetConfig().PulsarOpsConfig.MasterToken)
+	stdVerdict, ok := clusterStdStore[clusterName]
+	if !ok {
+		std := stats.NewStandardDeviation(clusterName)
+		clusterStdStore[clusterName] = &std
+		stdVerdict = &std
+	}
+
+	token := AssignString(topicCfg.Token, GetConfig().Token)
 	expectedLatency := TimeDuration(topicCfg.LatencyBudgetMs, latencyBudget, time.Millisecond)
 	prefix := "messageid"
 	payloads, maxPayloadSize := AllMsgPayloads(prefix, topicCfg.PayloadSizes, topicCfg.NumOfMessages)
@@ -261,6 +267,12 @@ func TestTopicLatency(topicCfg TopicCfg) {
 	} else if result.Latency > expectedLatency {
 		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over the budget %v",
 			clusterName, testName, result.Latency, expectedLatency)
+		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, false)
+		Alert(errMsg)
+		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
+	} else if stddev, mean, within2Sigma := stdVerdict.Push(float64(result.Latency.Milliseconds())); !within2Sigma {
+		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over two standard deviation %v ms and mean is %v ms",
+			clusterName, testName, result.Latency, stddev, mean)
 		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, false)
 		Alert(errMsg)
 		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)

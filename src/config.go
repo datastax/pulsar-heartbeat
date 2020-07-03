@@ -62,9 +62,9 @@ type OpsClusterCfg struct {
 	AlertPolicy AlertPolicyCfg `json:"alertPolicy"`
 }
 
-// PulsarOpsCfg is for monitor a list of Pulsar cluster
-type PulsarOpsCfg struct {
-	MasterToken     string          `json:"masterToken"`
+// PulsarAdminRESTCfg is for monitor a list of Pulsar cluster
+type PulsarAdminRESTCfg struct {
+	Token           string          `json:"Token"`
 	Clusters        []OpsClusterCfg `json:"clusters"`
 	IntervalSeconds int             `json:"intervalSeconds"`
 }
@@ -73,6 +73,7 @@ type PulsarOpsCfg struct {
 type TopicCfg struct {
 	Name            string         `json:"name"`
 	Token           string         `json:"token"`
+	TrustStore      string         `json:"trustStore"`
 	LatencyBudgetMs int            `json:"latencyBudgetMs"`
 	PulsarURL       string         `json:"pulsarUrl"`
 	TopicName       string         `json:"topicName"`
@@ -101,41 +102,19 @@ type WsConfig struct {
 	AlertPolicy     AlertPolicyCfg `json:"AlertPolicy"`
 }
 
-// PulsarPerfCfg is configuration to monitor Pulsar pub sub latency
-type PulsarPerfCfg struct {
-	Token           string     `json:"token"`
-	TrustStore      string     `json:"trustStore"`
-	IntervalSeconds int        `json:"intervalSeconds"`
-	TopicCfgs       []TopicCfg `json:"topicCfgs"`
-}
-
-// PulsarFuncCfg specifies the configuration of each function trigger
-type PulsarFuncCfg struct {
-	Name        string         `json:"name"` // save me some work not to parse the url
-	TriggerURL  string         `json:"triggerUrl"`
-	AlertPolicy AlertPolicyCfg `json:"alertPolicy"`
-}
-
-// PulsarFunctionsCfg configures a list of trigger functions in each cluster
-type PulsarFunctionsCfg struct {
-	MasterToken     string          `json:"masterToken"` //we can use the PulsarOpsConfig's master token
-	Clusters        []PulsarFuncCfg `json:"clusters"`
-	IntervalSeconds int             `json:"intervalSeconds"`
-}
-
 // Configuration - this server's configuration
 type Configuration struct {
-	Name                  string             `json:"name"`
-	AnalyticsConfig       AnalyticsCfg       `json:"analyticsConfig"`
-	PrometheusConfig      PrometheusCfg      `json:"prometheusConfig"`
-	SlackConfig           SlackCfg           `json:"slackConfig"`
-	OpsGenieConfig        OpsGenieCfg        `json:"opsGenieConfig"`
-	PulsarOpsConfig       PulsarOpsCfg       `json:"pulsarOpsConfig"`
-	PulsarPerfConfig      PulsarPerfCfg      `json:"pulsarPerfConfig"`
-	PulsarFunctionsConfig PulsarFunctionsCfg `json:"pulsarFunctionsConfig"`
-	PulsarTopicConfig     []TopicCfg         `json:"pulsarTopicConfig"`
-	SitesConfig           SitesCfg           `json:"sitesConfig"`
-	WebSocketConfig       []WsConfig         `json:"webSocketConfig"`
+	Name              string             `json:"name"`
+	Token             string             `json:"token"`
+	TrustStore        string             `json:"trustStore"`
+	AnalyticsConfig   AnalyticsCfg       `json:"analyticsConfig"`
+	PrometheusConfig  PrometheusCfg      `json:"prometheusConfig"`
+	SlackConfig       SlackCfg           `json:"slackConfig"`
+	OpsGenieConfig    OpsGenieCfg        `json:"opsGenieConfig"`
+	PulsarAdminConfig PulsarAdminRESTCfg `json:"pulsarAdminRestConfig"`
+	PulsarTopicConfig []TopicCfg         `json:"pulsarTopicConfig"`
+	SitesConfig       SitesCfg           `json:"sitesConfig"`
+	WebSocketConfig   []WsConfig         `json:"webSocketConfig"`
 }
 
 // AlertPolicyCfg is a set of criteria to evaluation triggers for incident alert
