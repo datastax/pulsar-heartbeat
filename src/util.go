@@ -8,13 +8,19 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/kafkaesque-io/pulsar-monitor/src/stats"
 )
 
 var (
 	// used to generate random payload size
 	letters = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+	// key is the cluster name
+	standardDeviationStore = make(map[string]*stats.StandardDeviation)
 )
 
 // ResponseErr - Error struct for Http response
@@ -201,4 +207,23 @@ func SingleSlashJoin(a, b string) string {
 		return a + "/" + b
 	}
 	return a + b
+}
+
+// StrToInt converts string to an integer format with a default if inproper value retrieved
+func StrToInt(str string, defaultNum int) int {
+	if i, err := strconv.Atoi(str); err == nil {
+		return i
+	}
+	return defaultNum
+}
+
+// GetStdBucket gets the standard deviation bucket
+func GetStdBucket(key string) *stats.StandardDeviation {
+	stdVerdict, ok := standardDeviationStore[key]
+	if !ok {
+		std := stats.NewStandardDeviation(key)
+		standardDeviationStore[key] = &std
+		return &std
+	}
+	return stdVerdict
 }

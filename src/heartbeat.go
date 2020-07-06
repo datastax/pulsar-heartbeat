@@ -23,6 +23,7 @@ func StartHeartBeat() {
 // UptimeHeartBeat sends heartbeat to uptime counter
 func UptimeHeartBeat() {
 	AnalyticsHeartbeat(GetConfig().Name)
+	PromCounter(HeartbeatCounterOpt(), GetConfig().Name)
 }
 
 // HeartBeatToOpsGenie send heart beat to ops genie

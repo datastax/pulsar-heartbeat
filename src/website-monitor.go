@@ -63,10 +63,11 @@ func MonitorSites() {
 		log.Println(site.URL)
 		go func(s SiteCfg) {
 			interval := TimeDuration(s.IntervalSeconds, 120, time.Second)
+			ticker := time.NewTicker(interval)
 			mon(s)
 			for {
 				select {
-				case <-time.Tick(interval):
+				case <-ticker.C:
 					mon(s)
 				}
 			}

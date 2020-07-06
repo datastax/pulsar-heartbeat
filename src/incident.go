@@ -169,8 +169,10 @@ func CreateIncident(component, alias, msg, desc, priority string) {
 func RemoveIncident(component string) {
 	if record, ok := incidents[component]; ok {
 		delete(incidents, component)
-		seconds := int(time.Since(record.createdAt).Seconds())
+		downtimeDuration := time.Since(record.createdAt)
+		seconds := int(downtimeDuration.Seconds())
 		AnalyticsClearIncident(component, seconds)
+		PromLatencySum(PubSubDowntimeGaugeOpt(), component, downtimeDuration)
 
 		genieKey := GetConfig().OpsGenieConfig.AlertKey
 		err := DeleteOpsGenieAlert(component, record.requestID, genieKey)

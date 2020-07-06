@@ -13,8 +13,10 @@ import (
 
 // PrometheusCfg configures Premetheus set up
 type PrometheusCfg struct {
-	Port          string `json:"port"`
-	ExposeMetrics bool   `json:"exposeMetrics"`
+	Port                  string `json:"port"`
+	ExposeMetrics         bool   `json:"exposeMetrics"`
+	PrometheusProxyURL    string `json:"prometheusProxyURL"`
+	PrometheusProxyAPIKey string `json:"prometheusProxyAPIKey"`
 }
 
 // SlackCfg is slack configuration
@@ -150,6 +152,10 @@ func ReadConfigFile(configFile string) {
 		}
 	}
 
+	if len(Config.Name) < 1 {
+		panic("a valid `name` in Configuration must be specified")
+	}
+
 	log.Println(Config)
 }
 
@@ -176,10 +182,11 @@ type monitorFunc func()
 // RunInterval runs interval
 func RunInterval(fn monitorFunc, interval time.Duration) {
 	go func() {
+		ticker := time.NewTicker(interval)
 		fn()
 		for {
 			select {
-			case <-time.Tick(interval):
+			case <-ticker.C:
 				fn()
 			}
 		}

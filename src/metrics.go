@@ -1,7 +1,13 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -11,12 +17,15 @@ import (
 var (
 	metrics   = make(map[string]*prometheus.GaugeVec)
 	summaries = make(map[string]*prometheus.SummaryVec)
+	counters  = make(map[string]*prometheus.CounterVec)
 )
 
 const (
 	funcTopicSubsystem = "func_topic"
 	pubSubSubsystem    = "pubsub"
 	websocketSubsystem = "websocket"
+	heartbeatSubsystem = "heartbeat"
+	downtimeSubsystem  = "downtime"
 )
 
 // This is Premetheus data modelling and naming convention
@@ -37,10 +46,10 @@ func TenantsGaugeOpt() prometheus.GaugeOpts {
 // SiteLatencyGaugeOpt is the description for hosting site latency gauge
 func SiteLatencyGaugeOpt() prometheus.GaugeOpts {
 	return prometheus.GaugeOpts{
-		Namespace: "kafkaesque",
+		Namespace: "website",
 		Subsystem: "webendpoint",
 		Name:      "latency_ms",
-		Help:      "kafkaesque website endpoint monitor and latency in ms",
+		Help:      "website endpoint monitor and latency in ms",
 	}
 }
 
@@ -51,6 +60,26 @@ func MsgLatencyGaugeOpt(typeName, desc string) prometheus.GaugeOpts {
 		Subsystem: typeName,
 		Name:      "latency_ms",
 		Help:      desc,
+	}
+}
+
+// HeartbeatCounterOpt is the description for heart beat counter
+func HeartbeatCounterOpt() prometheus.CounterOpts {
+	return prometheus.CounterOpts{
+		Namespace: "pulsar",
+		Subsystem: "monitor",
+		Name:      "counter",
+		Help:      "Pulsar cluster monitor heartbeat",
+	}
+}
+
+// PubSubDowntimeGaugeOpt is the description for downtime summary
+func PubSubDowntimeGaugeOpt() prometheus.GaugeOpts {
+	return prometheus.GaugeOpts{
+		Namespace: "pulsar",
+		Subsystem: "pubsub",
+		Name:      "downtime_seconds",
+		Help:      "Pulsar pubsub downtime in seconds",
 	}
 }
 
@@ -79,6 +108,19 @@ func PromGauge(opt prometheus.GaugeOpts, cluster string, num float64) {
 		prometheus.Register(newMetric)
 		newMetric.WithLabelValues(cluster).Set(num)
 		metrics[key] = newMetric
+	}
+}
+
+// PromCounter registers counter and increment
+func PromCounter(opt prometheus.CounterOpts, cluster string) {
+	key := fmt.Sprintf("%s-%s-%s", opt.Namespace, opt.Subsystem, opt.Name)
+	if promMetric, ok := counters[key]; ok {
+		promMetric.WithLabelValues(cluster).Inc()
+	} else {
+		newMetric := prometheus.NewCounterVec(opt, []string{"device"})
+		prometheus.Register(newMetric)
+		newMetric.WithLabelValues(cluster).Inc()
+		counters[key] = newMetric
 	}
 }
 
@@ -130,4 +172,106 @@ func GetGaugeType(nameType string) prometheus.GaugeOpts {
 	}
 
 	return MsgLatencyGaugeOpt(pubSubSubsystem, "Plusar pubsub message latency in ms")
+}
+
+// scrapeLocal scrapes the local metrics
+func scrapeLocal() ([]byte, error) {
+	url := "http://localhost" + Config.PrometheusConfig.Port + "/metrics"
+	newRequest, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		log.Printf("make http request to scrape self's prometheus %s error %v", url, err)
+		return []byte{}, err
+	}
+	client := &http.Client{}
+	response, err := client.Do(newRequest)
+	if response != nil {
+		defer response.Body.Close()
+	}
+	if err != nil {
+		log.Printf("scrape self's prometheus %s error %v", url, err)
+		return []byte{}, err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		log.Printf("scrape self's prometheus %s response status code %d", url, response.StatusCode)
+		return []byte{}, err
+	}
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Printf("scrape self's prometheus %s read response body error %v", url, err)
+		return []byte{}, err
+	}
+
+	var rc string
+	scanner := bufio.NewScanner(strings.NewReader(string(body)))
+
+	pattern := fmt.Sprintf(`.*pulsar.*`)
+	for scanner.Scan() {
+		text := scanner.Text()
+		matched, err := regexp.MatchString(pattern, text)
+		if matched && err == nil {
+			rc = fmt.Sprintf("%s%s\n", rc, text)
+		}
+	}
+	return []byte(strings.TrimSuffix(rc, "\n")), nil
+}
+
+// PushToPrometheusProxy pushes exp data to PrometheusProxy
+func PushToPrometheusProxy(proxyURL, authKey string) error {
+	data, err := scrapeLocal()
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", proxyURL, bytes.NewBuffer(data))
+	if err != nil {
+		log.Printf("push to prometheus proxy %s error NewRe	uest request %v", proxyURL, err)
+		return err
+	}
+
+	req.Header.Set("Authorization", authKey)
+
+	client := &http.Client{Timeout: time.Second * 50}
+
+	// Send request
+	resp, err := client.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		log.Printf("push to prometheus proxy %s error reading request %v", proxyURL, err)
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("push to prometheus proxy %s error status code %v", proxyURL, resp.StatusCode)
+		return fmt.Errorf("push to prometheus proxy %s error status code %v", proxyURL, resp.StatusCode)
+	}
+	// log.Println("successfully pushed to prometheus proxy")
+
+	return nil
+}
+
+// PushToPrometheusProxyThread is the daemon thread that scrape and pushes metrics to prometheus proxy
+func PushToPrometheusProxyThread() {
+	cfg := GetConfig().PrometheusConfig
+	if cfg.PrometheusProxyURL == "" && cfg.ExposeMetrics {
+		log.Println("This process is not configured to push metrics to prometheus proxy.")
+		return
+	}
+	proxyInstanceURL := cfg.PrometheusProxyURL + "/" + GetConfig().Name
+
+	log.Printf("push to prometheus proxy url %s", GetConfig().PrometheusConfig.PrometheusProxyURL)
+	go func(url, apikey string) {
+		ticker := time.NewTicker(10 * time.Second)
+		PushToPrometheusProxy(url, apikey)
+		for {
+			select {
+			case <-ticker.C:
+				PushToPrometheusProxy(url, apikey)
+			}
+		}
+	}(proxyInstanceURL, cfg.PrometheusProxyAPIKey)
+
 }

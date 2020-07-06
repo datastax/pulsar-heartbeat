@@ -169,6 +169,8 @@ func TestWsLatency(config WsConfig) {
 	token := AssignString(config.Token, GetConfig().Token)
 	expectedLatency := TimeDuration(config.LatencyBudgetMs, 2*latencyBudget, time.Millisecond)
 
+	stdVerdict := GetStdBucket(config.Cluster)
+
 	result, err := WsLatencyTest(config.ProducerURL, config.ConsumerURL, token)
 	if err != nil {
 		errMsg := fmt.Sprintf("cluster %s, %s latency test Pulsar error: %v", config.Cluster, config.Name, err)
@@ -178,6 +180,12 @@ func TestWsLatency(config WsConfig) {
 			config.Cluster, config.Name, result.Latency, expectedLatency)
 		Alert(errMsg)
 		ReportIncident(config.Name, config.Cluster, "persisted latency test failure", errMsg, &config.AlertPolicy)
+	} else if stddev, mean, within2Sigma := stdVerdict.Push(float64(result.Latency.Milliseconds())); !within2Sigma {
+		errMsg := fmt.Sprintf("cluster %s, websocket test message latency %v over two standard deviation %v ms and mean is %v ms",
+			config.Cluster, result.Latency, stddev, mean)
+		Alert(errMsg)
+		ReportIncident(config.Name, config.Cluster, "persisted latency test failure", errMsg, &config.AlertPolicy)
+
 	} else {
 		log.Printf("websocket pubsub succeeded with latency %v expected latency %v on topic %s, cluster %s\n",
 			result.Latency, expectedLatency, config.TopicName, config.Cluster)
@@ -196,11 +204,11 @@ func WebSocketTopicLatencyTestThread() {
 		log.Println(cfg.Name)
 		cfg.reconcileConfig()
 		go func(t WsConfig) {
-			interval := TimeDuration(t.IntervalSeconds, 60, time.Second)
+			ticker := time.NewTicker(TimeDuration(t.IntervalSeconds, 60, time.Second))
 			TestWsLatency(t)
 			for {
 				select {
-				case <-time.Tick(interval):
+				case <-ticker.C:
 					TestWsLatency(t)
 				}
 			}

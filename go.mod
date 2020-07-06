@@ -7,6 +7,7 @@ require (
 	github.com/frankban/quicktest v1.10.0 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/protobuf v1.3.3 // indirect
+	github.com/google/gops v0.3.10
 	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/go-retryablehttp v0.6.4
 	github.com/klauspost/compress v1.9.8 // indirect
@@ -17,7 +18,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.4.0
 	github.com/sirupsen/logrus v1.4.2
-	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5 // indirect
 	k8s.io/api v0.18.5
 	k8s.io/apimachinery v0.18.5
 	k8s.io/client-go v0.18.5
