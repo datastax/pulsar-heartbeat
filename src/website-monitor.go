@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
 
 func monitorSite(site SiteCfg) error {
@@ -62,7 +63,7 @@ func MonitorSites() {
 	for _, site := range sites {
 		log.Println(site.URL)
 		go func(s SiteCfg) {
-			interval := TimeDuration(s.IntervalSeconds, 120, time.Second)
+			interval := util.TimeDuration(s.IntervalSeconds, 120, time.Second)
 			ticker := time.NewTicker(interval)
 			mon(s)
 			for {

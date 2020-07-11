@@ -19,9 +19,9 @@ func NewStandardDeviation(name string) StandardDeviation {
 	}
 }
 
-// Push a float64 to calculate standard deviation and returns σ and whether the number is over 2σ in positive right side of bell curve
-// 2σ is at odd of every three weeks
-func (sd *StandardDeviation) Push(num float64) (std, mean float64, within2Sigma bool) {
+// Push a float64 to calculate standard deviation and returns σ and whether the number is over 3σ in positive right side of bell curve
+// 3σ is at odd of every three weeks
+func (sd *StandardDeviation) Push(num float64) (std, mean float64, within3Sigma bool) {
 	sd.Buckets = append(sd.Buckets, num)
 	sd.Sum += num
 	counter := len(sd.Buckets)
@@ -34,7 +34,12 @@ func (sd *StandardDeviation) Push(num float64) (std, mean float64, within2Sigma 
 	std = math.Sqrt(std / float64(counter))
 	sd.Std = std
 
-	// 2σ evaluation only applies to 10 more data samples
-	return std, sd.Mean, num-sd.Mean < 2*std || counter < 10
+	// 3σ evaluation only applies to 10 more data samples
+	return std, sd.Mean, num-sd.Mean < 3*std || counter < 10
 
+}
+
+// Add a float64 sample to the bucket
+func (sd *StandardDeviation) Add(num float64) {
+	sd.Buckets = append(sd.Buckets, num)
 }

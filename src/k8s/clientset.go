@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/sirupsen/logrus"
@@ -26,6 +27,35 @@ import (
 const (
 	// DefaultPulsarNamespace is the default pulsar namespace in the cluster
 	DefaultPulsarNamespace = "pulsar"
+
+	// ZookeeperSts is zookeeper sts name
+	ZookeeperSts = "zookeeper"
+
+	// BookkeeperSts is bookkeeper sts name
+	BookkeeperSts = "bookkeeper"
+
+	// BrokerDeployment is the broker deployment name
+	BrokerDeployment = "broker"
+
+	// ProxyDeployment is the proxy deployment name
+	ProxyDeployment = "proxy"
+
+	// FunctionWorkerDeployment is the function worker deployment name
+	FunctionWorkerDeployment = "functionWorker"
+)
+
+// ClusterStatus is the high level health of cluster status
+type ClusterStatus int
+
+const (
+	// TotalDown is the initial status
+	TotalDown ClusterStatus = iota
+
+	// OK is the healthy status
+	OK
+
+	// PartialReady is some parts of system are ok
+	PartialReady
 )
 
 // Client is the k8s client object
@@ -34,28 +64,49 @@ type Client struct {
 	Metrics          *metrics.Clientset
 	ClusterName      string
 	DefaultNamespace string
-	zookeeperSize    int32
-	bookkeeperSize   int32
-	brokerSize       int32
-	proxySize        int32
-	functionSize     int32
+	Status           ClusterStatus
+	Zookeeper        StatefulSet
+	Bookkeeper       StatefulSet
+	Broker           Deployment
+	Proxy            Deployment
+	FunctionWorker   StatefulSet
+}
+
+// Deployment is the k8s deployment
+type Deployment struct {
+	Name      string
+	Replicas  int32
+	Instances int32
+}
+
+// StatefulSet is the k8s sts
+type StatefulSet struct {
+	Name      string
+	Replicas  int32
+	Instances int32
 }
 
 // GetK8sClient gets k8s clientset
 func GetK8sClient() (*Client, error) {
-	var kubeconfig *string
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-	}
-	flag.Parse()
+	var config *rest.Config
 
-	// *kubeconfig is empty string if running inside a cluster
-	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
-	if err != nil {
-		return nil, err
+	if home := homedir.HomeDir(); home != "" {
+		// TODO: add configuration to allow customized config file
+		kubeconfig := filepath.Join(home, ".kube", "config")
+		if _, err := os.Stat(kubeconfig); os.IsNotExist(err) {
+			log.Println("this is an in-cluster k8s monitor")
+			if config, err = rest.InClusterConfig(); err != nil {
+				return nil, err
+			}
+
+		} else {
+			log.Printf("this is outside of k8s cluster monitor, kubeconfig dir %s", kubeconfig)
+			if config, err = clientcmd.BuildConfigFromFlags("", kubeconfig); err != nil {
+				return nil, err
+			}
+		}
 	}
+
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, err
@@ -63,7 +114,7 @@ func GetK8sClient() (*Client, error) {
 
 	metrics, err := metrics.NewForConfig(config)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	client := Client{
@@ -71,30 +122,10 @@ func GetK8sClient() (*Client, error) {
 		Metrics:   metrics,
 	}
 
-	broker, err := client.getDeployments(DefaultPulsarNamespace, "broker")
+	err = client.UpdateReplicas()
 	if err != nil {
 		return nil, err
 	}
-	client.brokerSize = *(broker.Items[0]).Spec.Replicas
-
-	proxy, err := client.getDeployments(DefaultPulsarNamespace, "proxy")
-	if err != nil {
-		return nil, err
-	}
-	client.proxySize = *(proxy.Items[0]).Spec.Replicas
-
-	zk, err := client.getStatefulSets(DefaultPulsarNamespace, "zookeeper")
-	if err != nil {
-		return nil, err
-	}
-	client.zookeeperSize = *(zk.Items[0]).Spec.Replicas
-
-	bk, err := client.getStatefulSets(DefaultPulsarNamespace, "bookkeeper")
-	if err != nil {
-		return nil, err
-	}
-	client.bookkeeperSize = *(bk.Items[0]).Spec.Replicas
-
 	return &client, nil
 }
 
@@ -112,22 +143,107 @@ func buildInClusterConfig() kubernetes.Interface {
 	return clientset
 }
 
+// UpdateReplicas updates the replicas for deployments and sts
+func (c *Client) UpdateReplicas() error {
+	broker, err := c.getDeployments(DefaultPulsarNamespace, BrokerDeployment)
+	if err != nil {
+		return err
+	}
+	c.Broker.Replicas = *(broker.Items[0]).Spec.Replicas
+
+	proxy, err := c.getDeployments(DefaultPulsarNamespace, ProxyDeployment)
+	if err != nil {
+		return err
+	}
+	c.Proxy.Replicas = *(proxy.Items[0]).Spec.Replicas
+
+	zk, err := c.getStatefulSets(DefaultPulsarNamespace, ZookeeperSts)
+	if err != nil {
+		return err
+	}
+	c.Zookeeper.Replicas = *(zk.Items[0]).Spec.Replicas
+
+	bk, err := c.getStatefulSets(DefaultPulsarNamespace, BookkeeperSts)
+	if err != nil {
+		return err
+	}
+	c.Bookkeeper.Replicas = *(bk.Items[0]).Spec.Replicas
+
+	return nil
+}
+
 // WatchPods watches the running pods vs intended replicas
 func (c *Client) WatchPods(namespace string) error {
+
 	if counts, err := c.runningPodCounts(namespace, "zookeeper"); err == nil {
-		log.Printf("zookeepers running %d instances, replicas %d", counts, c.zookeeperSize)
+		c.Zookeeper.Instances = int32(counts)
+	} else {
+		return err
 	}
 
 	if counts, err := c.runningPodCounts(namespace, "bookkeeper"); err == nil {
-		log.Printf("bookkeeper running %d instances, replicas %d", counts, c.bookkeeperSize)
+		c.Bookkeeper.Instances = int32(counts)
+	} else {
+		return err
 	}
+
 	if counts, err := c.runningPodCounts(namespace, "broker"); err == nil {
-		log.Printf("broker running %d instances, replicas %d", counts, c.brokerSize)
+		c.Broker.Instances = int32(counts)
+	} else {
+		return err
 	}
+
 	if counts, err := c.runningPodCounts(namespace, "proxy"); err == nil {
-		log.Printf("proxy running %d instances, replicas %d", counts, c.proxySize)
+		c.Proxy.Instances = int32(counts)
+	} else {
+		return err
 	}
 	return nil
+}
+
+// EvalHealth evaluate the health of cluster status
+func (c *Client) EvalHealth() (string, ClusterStatus) {
+	health := ""
+	if c.Zookeeper.Instances < 2 {
+		health = fmt.Sprintf("\nCluster error - zookeeper is running %d instances out of %d replicas", c.Zookeeper.Instances, c.Zookeeper.Replicas)
+		c.Status = TotalDown
+	} else if c.Zookeeper.Instances == 2 {
+		health = fmt.Sprintf("\nCluster warning - zookeeper is running only 2 instances")
+		c.Status = PartialReady
+	} else if c.Zookeeper.Instances == c.Zookeeper.Replicas {
+		c.Status = OK
+	}
+
+	if c.Bookkeeper.Instances < 2 {
+		health = fmt.Sprintf("\nCluster error - bookkeeper is running %d instances out of %d replicas", c.Bookkeeper.Instances, c.Bookkeeper.Replicas)
+		c.Status = TotalDown
+	} else if c.Bookkeeper.Instances != c.Bookkeeper.Replicas {
+		health = fmt.Sprintf("\nCluster warning - bookkeeper is running %d instances out of %d", c.Bookkeeper.Instances, c.Bookkeeper.Replicas)
+		c.Status = PartialReady
+	} else if c.Bookkeeper.Instances == c.Bookkeeper.Replicas {
+		c.Status = OK
+	}
+
+	if c.Broker.Instances == 0 {
+		health = fmt.Sprintf("\nCluster error - broker has no running instances out of %d replicas", c.Broker.Replicas)
+		c.Status = TotalDown
+	} else if c.Broker.Instances < c.Broker.Replicas {
+		health = fmt.Sprintf("\nCluster warning - broker is running %d instances out of %d", c.Broker.Instances, c.Broker.Replicas)
+		c.Status = PartialReady
+	} else if c.Broker.Instances == c.Broker.Replicas {
+		c.Status = OK
+	}
+
+	if c.Proxy.Instances == 0 {
+		health = fmt.Sprintf("\nCluster error - proxy has no running instances out of %d replicas", c.Proxy.Replicas)
+		c.Status = TotalDown
+	} else if c.Proxy.Instances < c.Proxy.Replicas {
+		health = fmt.Sprintf("\nCluster warning - proxy is running %d instances out of %d", c.Proxy.Instances, c.Proxy.Replicas)
+		c.Status = PartialReady
+	} else if c.Proxy.Instances == c.Proxy.Replicas {
+		c.Status = OK
+	}
+	return health, c.Status
 }
 
 // WatchPodResource watches pod's resource
@@ -159,11 +275,9 @@ func (c *Client) runningPodCounts(namespace, component string) (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	log.Printf("size %d", pods.Size())
 
 	counts := 0
 	for _, item := range pods.Items {
-		log.Println(item)
 		for _, status := range item.Status.ContainerStatuses {
 			if status.Ready {
 				counts++
@@ -247,7 +361,7 @@ func (c *Client) WatchPVC(namespace, component, maxClaim string) error {
 					totalClaimedQuant.String(),
 				)
 				// trigger action
-				log.Println("*** Taking action ***")
+				log.Println("trigger action")
 			}
 
 		case watch.Modified:

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
 
 func TestUnmarshConfigFile(t *testing.T) {
@@ -115,7 +117,7 @@ func TestGenMultipleDefaultPayloadSize(t *testing.T) {
 
 func TestIncidentAlertPolicy(t *testing.T) {
 
-	assert(t, StrContains([]string{"test", "foo"}, "foo"), "fail to eval container string")
+	assert(t, util.StrContains([]string{"test", "foo"}, "foo"), "fail to eval container string")
 
 	policy := AlertPolicyCfg{
 		Ceiling:               20,

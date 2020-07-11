@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/apache/pulsar-client-go/pulsar"
+	"github.com/kafkaesque-io/pulsar-monitor/src/topic"
+	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
 
 const (
@@ -45,7 +47,7 @@ func PubSubLatency(clusterName, tokenStr, uri, topicName, outputTopic, msgPrefix
 		}
 
 		if strings.HasPrefix(uri, "pulsar+ssl://") {
-			trustStore := AssignString(GetConfig().TrustStore, "/etc/ssl/certs/ca-bundle.crt")
+			trustStore := util.AssignString(GetConfig().TrustStore, "/etc/ssl/certs/ca-bundle.crt")
 			if trustStore == "" {
 				panic("this is fatal that we are missing trustStore while pulsar+ssl is required")
 			}
@@ -85,7 +87,7 @@ func PubSubLatency(clusterName, tokenStr, uri, topicName, outputTopic, msgPrefix
 
 	// use the same input topic if outputTopic does not exist
 	// Two topic use case could be for Pulsar function test
-	consumerTopic := AssignString(outputTopic, topicName)
+	consumerTopic := util.AssignString(outputTopic, topicName)
 	consumer, err := client.Subscribe(pulsar.ConsumerOptions{
 		Topic:                       consumerTopic,
 		SubscriptionName:            subscriptionName,
@@ -115,7 +117,7 @@ func PubSubLatency(clusterName, tokenStr, uri, topicName, outputTopic, msgPrefix
 	//  and because no need to protect map iteration to calculate results
 	mapMutex := &sync.Mutex{}
 
-	receiveTimeout := TimeDuration(5+(maxPayloadSize/102400), 10, time.Second)
+	receiveTimeout := util.TimeDuration(5+(maxPayloadSize/102400), 10, time.Second)
 	go func() {
 
 		lastMessageIndex := -1 // to track the message delivery order
@@ -195,7 +197,7 @@ func PubSubLatency(clusterName, tokenStr, uri, topicName, outputTopic, msgPrefix
 	}
 
 	ticker := time.NewTicker(time.Duration(5*len(payloads)) * time.Second)
-	go ticker.Stop()
+	defer ticker.Stop()
 	select {
 	case receiverLatency := <-completeChan:
 		return receiverLatency, nil
@@ -215,7 +217,7 @@ func TopicLatencyTestThread() {
 	for _, topic := range topics {
 		log.Println(topic.Name)
 		go func(t TopicCfg) {
-			ticker := time.NewTicker(TimeDuration(t.IntervalSeconds, 60, time.Second))
+			ticker := time.NewTicker(util.TimeDuration(t.IntervalSeconds, 60, time.Second))
 			TestTopicLatency(t)
 			for {
 				select {
@@ -235,18 +237,25 @@ func TestTopicLatency(topicCfg TopicCfg) {
 		panic(err) //panic because this is a showstopper
 	}
 	clusterName := adminURL.Hostname()
+	token := util.AssignString(topicCfg.Token, GetConfig().Token)
 
-	stdVerdict := GetStdBucket(clusterName)
+	if topicCfg.NumberOfPartitions < 2 {
+		testTopicLatency(clusterName, token, topicCfg)
+	} else {
+		testPartitionTopic(clusterName, token, topicCfg)
+	}
+}
 
-	token := AssignString(topicCfg.Token, GetConfig().Token)
-	expectedLatency := TimeDuration(topicCfg.LatencyBudgetMs, latencyBudget, time.Millisecond)
+func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
+	stdVerdict := util.GetStdBucket(clusterName)
+	expectedLatency := util.TimeDuration(topicCfg.LatencyBudgetMs, latencyBudget, time.Millisecond)
 	prefix := "messageid"
 	payloads, maxPayloadSize := AllMsgPayloads(prefix, topicCfg.PayloadSizes, topicCfg.NumOfMessages)
 	log.Printf("send %d messages to topic %s on cluster %s with latency budget %v, %v, %d\n",
 		len(payloads), topicCfg.TopicName, topicCfg.PulsarURL, expectedLatency, topicCfg.PayloadSizes, topicCfg.NumOfMessages)
 	result, err := PubSubLatency(clusterName, token, topicCfg.PulsarURL, topicCfg.TopicName, topicCfg.OutputTopic, prefix, topicCfg.ExpectedMsg, payloads, maxPayloadSize)
 
-	testName := AssignString(topicCfg.Name, pubSubSubsystem)
+	testName := util.AssignString(topicCfg.Name, pubSubSubsystem)
 	log.Printf("cluster %s has message latency %v", clusterName, result.Latency)
 	if err != nil {
 		errMsg := fmt.Sprintf("cluster %s, %s latency test Pulsar error: %v", clusterName, testName, err)
@@ -258,13 +267,14 @@ func TestTopicLatency(topicCfg TopicCfg) {
 		AnalyticsLatencyReport(clusterName, testName, "message delivery out of order", int(result.Latency.Milliseconds()), false, true)
 		Alert(errMsg)
 	} else if result.Latency > expectedLatency {
+		stdVerdict.Add(float64(result.Latency.Milliseconds()))
 		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over the budget %v",
 			clusterName, testName, result.Latency, expectedLatency)
 		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, false)
 		Alert(errMsg)
 		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
-	} else if stddev, mean, within2Sigma := stdVerdict.Push(float64(result.Latency.Milliseconds())); !within2Sigma {
-		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over two standard deviation %v ms and mean is %v ms",
+	} else if stddev, mean, within3Sigma := stdVerdict.Push(float64(result.Latency.Milliseconds())); !within3Sigma {
+		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over three standard deviation %v ms and mean is %v ms",
 			clusterName, testName, result.Latency, stddev, mean)
 		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, false)
 		Alert(errMsg)
@@ -283,4 +293,35 @@ func expectedMessage(payload, expected string) string {
 		return fmt.Sprintf("%s%s", payload, expected[1:len(expected)])
 	}
 	return payload
+}
+
+func testPartitionTopic(clusterName, token string, cfg TopicCfg) {
+	trustStore := util.AssignString(cfg.TrustStore, GetConfig().TrustStore, "/etc/ssl/certs/ca-bundle.crt")
+	adminRESTURL := ""
+	testName := "partition-topic-test"
+	//TODO: reconcile with numberofpartitions from k8s broker replicas
+	pt, err := topic.NewPartitionTopic(cfg.PulsarURL, token, trustStore, cfg.TopicName, adminRESTURL, cfg.NumberOfPartitions)
+	if err != nil {
+		log.Printf("failed to create PartitionTopic test object, error: %v", err)
+		return
+	}
+	log.Printf("partition-topic object %v\n", pt)
+	latency, err := pt.TestPartitionTopic()
+	if err != nil {
+		errMsg := fmt.Sprintf("cluster %s, %s latency test Pulsar error: %v", clusterName, testName, err)
+		Alert(errMsg)
+		// ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
+		AnalyticsLatencyReport(clusterName, testName, err.Error(), -1, false, false)
+	}
+	log.Println("partition topic concluded...")
+	expectedLatency := util.TimeDuration(cfg.LatencyBudgetMs, latencyBudget, time.Millisecond)
+	if latency > expectedLatency {
+		errMsg := fmt.Sprintf("cluster %s, partition topic test message latency %v over the budget %v",
+			clusterName, latency, expectedLatency)
+		AnalyticsLatencyReport(clusterName, testName, errMsg, int(latency.Milliseconds()), true, false)
+		Alert(errMsg)
+		// ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &cfg.AlertPolicy)
+	} else {
+		log.Printf("%d partition topics test concluded with latency %v", pt.NumberOfPartitions, latency)
+	}
 }

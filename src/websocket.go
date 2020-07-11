@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
 
 // PulsarMessage is the required message format for Pulsar Websocket message
@@ -166,25 +167,26 @@ func WsLatencyTest(producerURL, subscriptionURL, token string) (MsgResult, error
 
 // TestWsLatency test all clusters' websocket pub sub latency
 func TestWsLatency(config WsConfig) {
-	token := AssignString(config.Token, GetConfig().Token)
-	expectedLatency := TimeDuration(config.LatencyBudgetMs, 2*latencyBudget, time.Millisecond)
+	token := util.AssignString(config.Token, GetConfig().Token)
+	expectedLatency := util.TimeDuration(config.LatencyBudgetMs, 2*latencyBudget, time.Millisecond)
 
-	stdVerdict := GetStdBucket(config.Cluster)
+	stdVerdict := util.GetStdBucket(config.Cluster)
 
 	result, err := WsLatencyTest(config.ProducerURL, config.ConsumerURL, token)
 	if err != nil {
-		errMsg := fmt.Sprintf("cluster %s, %s latency test Pulsar error: %v", config.Cluster, config.Name, err)
+		errMsg := fmt.Sprintf("cluster %s, %s websocket latency test Pulsar error: %v", config.Cluster, config.Name, err)
 		Alert(errMsg)
 	} else if result.Latency > expectedLatency {
-		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over the budget %v",
+		stdVerdict.Add(float64(result.Latency.Milliseconds()))
+		errMsg := fmt.Sprintf("cluster %s, %s websocket test message latency %v over the budget %v",
 			config.Cluster, config.Name, result.Latency, expectedLatency)
 		Alert(errMsg)
-		ReportIncident(config.Name, config.Cluster, "persisted latency test failure", errMsg, &config.AlertPolicy)
-	} else if stddev, mean, within2Sigma := stdVerdict.Push(float64(result.Latency.Milliseconds())); !within2Sigma {
+		ReportIncident(config.Name, config.Cluster, "websocket persisted latency test failure", errMsg, &config.AlertPolicy)
+	} else if stddev, mean, within3Sigma := stdVerdict.Push(float64(result.Latency.Milliseconds())); !within3Sigma {
 		errMsg := fmt.Sprintf("cluster %s, websocket test message latency %v over two standard deviation %v ms and mean is %v ms",
 			config.Cluster, result.Latency, stddev, mean)
 		Alert(errMsg)
-		ReportIncident(config.Name, config.Cluster, "persisted latency test failure", errMsg, &config.AlertPolicy)
+		ReportIncident(config.Name, config.Cluster, "websocket persisted latency test failure", errMsg, &config.AlertPolicy)
 
 	} else {
 		log.Printf("websocket pubsub succeeded with latency %v expected latency %v on topic %s, cluster %s\n",
@@ -204,7 +206,7 @@ func WebSocketTopicLatencyTestThread() {
 		log.Println(cfg.Name)
 		cfg.reconcileConfig()
 		go func(t WsConfig) {
-			ticker := time.NewTicker(TimeDuration(t.IntervalSeconds, 60, time.Second))
+			ticker := time.NewTicker(util.TimeDuration(t.IntervalSeconds, 60, time.Second))
 			TestWsLatency(t)
 			for {
 				select {

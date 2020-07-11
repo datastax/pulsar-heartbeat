@@ -1,9 +1,10 @@
-package main
+package util
 
 import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
@@ -226,4 +227,26 @@ func GetStdBucket(key string) *stats.StandardDeviation {
 		return &std
 	}
 	return stdVerdict
+}
+
+// TokenizeTopicFullName tokenizes a topic full name into persistent, tenant, namespace, and topic name.
+func TokenizeTopicFullName(topicFn string) (isPersistent bool, tenant, namespace, topic string, err error) {
+	var topicRoute string
+	if strings.HasPrefix(topicFn, "persistent://") {
+		topicRoute = strings.Replace(topicFn, "persistent://", "", 1)
+		isPersistent = true
+	} else if strings.HasPrefix(topicFn, "non-persistent://") {
+		topicRoute = strings.Replace(topicFn, "non-persistent://", "", 1)
+	} else {
+		return false, "", "", "", fmt.Errorf("invalid persistent or non-persistent part")
+	}
+
+	parts := strings.Split(topicRoute, "/")
+	if len(parts) == 3 {
+		return isPersistent, parts[0], parts[1], parts[2], nil
+	} else if len(parts) == 2 {
+		return isPersistent, parts[0], parts[1], "", nil
+	} else {
+		return false, "", "", "", fmt.Errorf("missing tenant, namespace, or topic name")
+	}
 }

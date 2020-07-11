@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
 
 // report incident which usually is high level of escalation and paging
@@ -104,7 +105,7 @@ func (t *IncidentAlertPolicy) clear() int {
 
 func newPolicy(component, msg, desc string, eval *AlertPolicyCfg) IncidentAlertPolicy {
 	newTracker := IncidentAlertPolicy{}
-	newTracker.EvalWindowSeconds = TimeDuration(eval.MovingWindowSeconds, 1, time.Second)
+	newTracker.EvalWindowSeconds = util.TimeDuration(eval.MovingWindowSeconds, 1, time.Second)
 	newTracker.Alerts = make(map[time.Time]bool)
 	newTracker.LimitInWindow = eval.CeilingInMovingWindow
 	newTracker.Limit = eval.Ceiling
@@ -143,7 +144,7 @@ func ClearIncident(component string) {
 // NewIncident creates a Incident object
 func NewIncident(component, alias, msg, desc, priority string) Incident {
 	p := "P2" //default priority
-	if StrContains(AllowedPriorities, priority) {
+	if util.StrContains(AllowedPriorities, priority) {
 		p = priority
 	}
 	return Incident{

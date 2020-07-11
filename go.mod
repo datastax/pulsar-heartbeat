@@ -17,6 +17,7 @@ require (
 	github.com/pierrec/lz4 v2.4.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.4.0
+	github.com/prometheus/common v0.9.1
 	github.com/sirupsen/logrus v1.4.2
 	k8s.io/api v0.18.5
 	k8s.io/apimachinery v0.18.5

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 	insights "github.com/newrelic/go-insights/client"
 )
 
@@ -129,7 +130,7 @@ var env string
 
 // SetupAnalytics initializes and validates the configuration
 func SetupAnalytics() {
-	env = AssignString(os.Getenv("DeployEnv"), "testing")
+	env = util.AssignString(os.Getenv("DeployEnv"), "testing")
 	if GetConfig().AnalyticsConfig.InsightsWriteKey == "" || GetConfig().AnalyticsConfig.InsightsAccountID == "" {
 		return
 	}

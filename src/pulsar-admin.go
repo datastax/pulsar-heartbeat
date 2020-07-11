@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
 
 // PulsarAdminTenant probes the tenant endpoint to get a list of tenants
@@ -55,7 +56,7 @@ func PulsarAdminTenant(clusterURL, token string) (int, error) {
 // PulsarTenants get a list of tenants on each cluster
 func PulsarTenants() {
 	clusters := GetConfig().PulsarAdminConfig.Clusters
-	token := AssignString(GetConfig().PulsarAdminConfig.Token, GetConfig().Token)
+	token := util.AssignString(GetConfig().PulsarAdminConfig.Token, GetConfig().Token)
 
 	for _, cluster := range clusters {
 		adminURL, err := url.ParseRequestURI(cluster.URL)
@@ -63,7 +64,7 @@ func PulsarTenants() {
 			panic(err) //panic because this is a showstopper
 		}
 		clusterName := adminURL.Hostname()
-		queryURL := SingleSlashJoin(cluster.URL, "/admin/v2/tenants")
+		queryURL := util.SingleSlashJoin(cluster.URL, "/admin/v2/tenants")
 		tenantSize, err := PulsarAdminTenant(queryURL, token)
 		if err != nil {
 			errMsg := fmt.Sprintf("tenant-test failed on cluster %s error: %v", queryURL, err)

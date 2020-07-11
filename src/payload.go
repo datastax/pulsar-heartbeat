@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
 
 // manage the payload size of Pulsar message
@@ -33,7 +35,7 @@ func (p *Payload) GenDefaultPayload() []byte {
 func (p Payload) createPayload() []byte {
 	size := randRange(p.Ceiling, p.Floor)
 	//use random to make compress impossible
-	return RandStringBytes(size)
+	return util.RandStringBytes(size)
 }
 
 // PrefixPayload creates string prefix in the payload
