@@ -44,12 +44,12 @@ const (
 	FunctionWorkerDeployment = "functionWorker"
 )
 
-// ClusterStatus is the high level health of cluster status
-type ClusterStatus int
+// ClusterStatusCode is the high level health of cluster status
+type ClusterStatusCode int
 
 const (
 	// TotalDown is the initial status
-	TotalDown ClusterStatus = iota
+	TotalDown ClusterStatusCode = iota
 
 	// OK is the healthy status
 	OK
@@ -64,12 +64,21 @@ type Client struct {
 	Metrics          *metrics.Clientset
 	ClusterName      string
 	DefaultNamespace string
-	Status           ClusterStatus
+	Status           ClusterStatusCode
 	Zookeeper        StatefulSet
 	Bookkeeper       StatefulSet
 	Broker           Deployment
 	Proxy            Deployment
 	FunctionWorker   StatefulSet
+}
+
+// ClusterStatus is the health status of the cluster and its components
+type ClusterStatus struct {
+	ZookeeperOfflineInstances  int
+	BookkeeperOfflineInstances int
+	BrokerOfflineInstances     int
+	ProxyOfflineInstances      int
+	Status                     ClusterStatusCode
 }
 
 // Deployment is the k8s deployment
@@ -204,46 +213,55 @@ func (c *Client) WatchPods(namespace string) error {
 // EvalHealth evaluate the health of cluster status
 func (c *Client) EvalHealth() (string, ClusterStatus) {
 	health := ""
+	status := ClusterStatus{
+		ZookeeperOfflineInstances:  int(c.Zookeeper.Replicas - c.Zookeeper.Instances),
+		BookkeeperOfflineInstances: int(c.Bookkeeper.Replicas - c.Bookkeeper.Instances),
+		BrokerOfflineInstances:     int(c.Broker.Replicas - c.Broker.Instances),
+		ProxyOfflineInstances:      int(c.Proxy.Replicas - c.Proxy.Instances),
+		Status:                     OK,
+	}
 	if c.Zookeeper.Instances < 2 {
 		health = fmt.Sprintf("\nCluster error - zookeeper is running %d instances out of %d replicas", c.Zookeeper.Instances, c.Zookeeper.Replicas)
-		c.Status = TotalDown
+		status.Status = TotalDown
 	} else if c.Zookeeper.Instances == 2 {
 		health = fmt.Sprintf("\nCluster warning - zookeeper is running only 2 instances")
-		c.Status = PartialReady
-	} else if c.Zookeeper.Instances == c.Zookeeper.Replicas {
-		c.Status = OK
+		status.Status = PartialReady
 	}
 
 	if c.Bookkeeper.Instances < 2 {
-		health = fmt.Sprintf("\nCluster error - bookkeeper is running %d instances out of %d replicas", c.Bookkeeper.Instances, c.Bookkeeper.Replicas)
-		c.Status = TotalDown
+		health = health + fmt.Sprintf("\nCluster error - bookkeeper is running %d instances out of %d replicas", c.Bookkeeper.Instances, c.Bookkeeper.Replicas)
+		status.Status = TotalDown
 	} else if c.Bookkeeper.Instances != c.Bookkeeper.Replicas {
-		health = fmt.Sprintf("\nCluster warning - bookkeeper is running %d instances out of %d", c.Bookkeeper.Instances, c.Bookkeeper.Replicas)
-		c.Status = PartialReady
-	} else if c.Bookkeeper.Instances == c.Bookkeeper.Replicas {
-		c.Status = OK
+		health = health + fmt.Sprintf("\nCluster warning - bookkeeper is running %d instances out of %d", c.Bookkeeper.Instances, c.Bookkeeper.Replicas)
+		status.Status = updateStatus(status.Status, PartialReady)
 	}
 
 	if c.Broker.Instances == 0 {
-		health = fmt.Sprintf("\nCluster error - broker has no running instances out of %d replicas", c.Broker.Replicas)
-		c.Status = TotalDown
+		health = health + fmt.Sprintf("\nCluster error - broker has no running instances out of %d replicas", c.Broker.Replicas)
+		status.Status = TotalDown
 	} else if c.Broker.Instances < c.Broker.Replicas {
 		health = fmt.Sprintf("\nCluster warning - broker is running %d instances out of %d", c.Broker.Instances, c.Broker.Replicas)
-		c.Status = PartialReady
-	} else if c.Broker.Instances == c.Broker.Replicas {
-		c.Status = OK
+		status.Status = updateStatus(status.Status, PartialReady)
 	}
 
 	if c.Proxy.Instances == 0 {
-		health = fmt.Sprintf("\nCluster error - proxy has no running instances out of %d replicas", c.Proxy.Replicas)
-		c.Status = TotalDown
+		health = health + fmt.Sprintf("\nCluster error - proxy has no running instances out of %d replicas", c.Proxy.Replicas)
+		status.Status = TotalDown
 	} else if c.Proxy.Instances < c.Proxy.Replicas {
-		health = fmt.Sprintf("\nCluster warning - proxy is running %d instances out of %d", c.Proxy.Instances, c.Proxy.Replicas)
-		c.Status = PartialReady
-	} else if c.Proxy.Instances == c.Proxy.Replicas {
-		c.Status = OK
+		health = health + fmt.Sprintf("\nCluster warning - proxy is running %d instances out of %d", c.Proxy.Instances, c.Proxy.Replicas)
+		status.Status = updateStatus(status.Status, PartialReady)
 	}
-	return health, c.Status
+	c.Status = status.Status
+	return health, status
+}
+
+func updateStatus(original, current ClusterStatusCode) ClusterStatusCode {
+	if current == TotalDown || original == TotalDown {
+		return TotalDown
+	} else if current == PartialReady || original == PartialReady {
+		return PartialReady
+	}
+	return current
 }
 
 // WatchPodResource watches pod's resource
@@ -278,12 +296,20 @@ func (c *Client) runningPodCounts(namespace, component string) (int, error) {
 
 	counts := 0
 	for _, item := range pods.Items {
+		containers := 0
+		readyContainers := 0
 		for _, status := range item.Status.ContainerStatuses {
+			// status.Name is container name
 			if status.Ready {
-				counts++
+				readyContainers++
 			}
+			containers++
+		}
+		if containers == readyContainers {
+			counts++
 		}
 	}
+
 	return counts, nil
 }
 

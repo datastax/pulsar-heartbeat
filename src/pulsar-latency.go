@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/apache/pulsar-client-go/pulsar"
+	"github.com/kafkaesque-io/pulsar-monitor/src/k8s"
 	"github.com/kafkaesque-io/pulsar-monitor/src/topic"
 	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
@@ -300,27 +301,35 @@ func testPartitionTopic(clusterName, token string, cfg TopicCfg) {
 	adminRESTURL := ""
 	testName := "partition-topic-test"
 	//TODO: reconcile with numberofpartitions from k8s broker replicas
+	if health, offlineBrokers := clusterHealth.Get(); health == k8s.TotalDown || offlineBrokers > 0 {
+		errMsg := fmt.Sprintf("cluster %s, %s test cannot proceed because offline brokers are %d or cluster health is %d",
+			clusterName, testName, offlineBrokers, health)
+		Alert(errMsg)
+		ReportIncident(clusterName, clusterName, "partition topic test detects unhealthy brokers", errMsg, &cfg.AlertPolicy)
+		return
+	}
 	pt, err := topic.NewPartitionTopic(cfg.PulsarURL, token, trustStore, cfg.TopicName, adminRESTURL, cfg.NumberOfPartitions)
 	if err != nil {
-		log.Printf("failed to create PartitionTopic test object, error: %v", err)
+		errMsg := fmt.Sprintf("%s failed to create PartitionTopic test object, error: %v", clusterName, err)
+		ReportIncident(clusterName, clusterName, "persisted failure to create partition topic test client", errMsg, &cfg.AlertPolicy)
 		return
 	}
 	log.Printf("partition-topic object %v\n", pt)
 	latency, err := pt.TestPartitionTopic()
 	if err != nil {
-		errMsg := fmt.Sprintf("cluster %s, %s latency test Pulsar error: %v", clusterName, testName, err)
+		errMsg := fmt.Sprintf("cluster %s, %s partition topic test failed with Pulsar error: %v", clusterName, testName, err)
 		Alert(errMsg)
-		// ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
-		AnalyticsLatencyReport(clusterName, testName, err.Error(), -1, false, false)
+		ReportIncident(clusterName, clusterName, "partition topic test failure", errMsg, &cfg.AlertPolicy)
+		// AnalyticsLatencyReport(clusterName, testName, err.Error(), -1, false, false)
 	}
 	log.Println("partition topic concluded...")
 	expectedLatency := util.TimeDuration(cfg.LatencyBudgetMs, latencyBudget, time.Millisecond)
 	if latency > expectedLatency {
 		errMsg := fmt.Sprintf("cluster %s, partition topic test message latency %v over the budget %v",
 			clusterName, latency, expectedLatency)
-		AnalyticsLatencyReport(clusterName, testName, errMsg, int(latency.Milliseconds()), true, false)
+		// AnalyticsLatencyReport(clusterName, testName, errMsg, int(latency.Milliseconds()), true, false)
 		Alert(errMsg)
-		// ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &cfg.AlertPolicy)
+		ReportIncident(clusterName, clusterName, "partition topic test has over budget latency", errMsg, &cfg.AlertPolicy)
 	} else {
 		log.Printf("%d partition topics test concluded with latency %v", pt.NumberOfPartitions, latency)
 	}

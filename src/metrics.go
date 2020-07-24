@@ -21,11 +21,16 @@ var (
 )
 
 const (
-	funcTopicSubsystem = "func_topic"
-	pubSubSubsystem    = "pubsub"
-	websocketSubsystem = "websocket"
-	heartbeatSubsystem = "heartbeat"
-	downtimeSubsystem  = "downtime"
+	funcTopicSubsystem     = "func_topic"
+	pubSubSubsystem        = "pubsub"
+	websocketSubsystem     = "websocket"
+	heartbeatSubsystem     = "heartbeat"
+	downtimeSubsystem      = "downtime"
+	k8sBrokerSubsystem     = "k8s_broker"
+	k8sBookkeeperSubsystem = "k8s_bookkeeper"
+	k8sZookeeperSubsystem  = "k8s_zookeeper"
+	k8sProxySubsystem      = "k8s_proxy"
+	k8sUndefinedSubsystem  = "k8s_undefined"
 )
 
 // This is Premetheus data modelling and naming convention
@@ -40,6 +45,16 @@ func TenantsGaugeOpt() prometheus.GaugeOpts {
 		Subsystem: "tenant",
 		Name:      "size",
 		Help:      "Plusar rest api tenant counts",
+	}
+}
+
+// OfflinePodGaugeOpt is offline pods counter
+func OfflinePodGaugeOpt(subsystem, desc string) prometheus.GaugeOpts {
+	return prometheus.GaugeOpts{
+		Namespace: "pulsar",
+		Subsystem: subsystem,
+		Name:      "offline_counter",
+		Help:      desc,
 	}
 }
 
@@ -172,6 +187,22 @@ func GetGaugeType(nameType string) prometheus.GaugeOpts {
 	}
 
 	return MsgLatencyGaugeOpt(pubSubSubsystem, "Plusar pubsub message latency in ms")
+}
+
+// GetOfflinePodsCounter returns prometheus GaugeOpts for kubernetes cluster pod offline counter
+func GetOfflinePodsCounter(subsystem string) prometheus.GaugeOpts {
+	switch subsystem {
+	case k8sBookkeeperSubsystem:
+		return OfflinePodGaugeOpt(k8sBookkeeperSubsystem, "Pulsar k8s clueter bookkeeper pods offline counter")
+	case k8sBrokerSubsystem:
+		return OfflinePodGaugeOpt(k8sBrokerSubsystem, "Pulsar k8s clueter broker pods offline counter")
+	case k8sProxySubsystem:
+		return OfflinePodGaugeOpt(k8sProxySubsystem, "Pulsar k8s clueter proxy pods offline counter")
+	case k8sZookeeperSubsystem:
+		return OfflinePodGaugeOpt(k8sZookeeperSubsystem, "Pulsar k8s clueter zookeeper pods offline counter")
+	default:
+		return OfflinePodGaugeOpt(k8sUndefinedSubsystem, "Pulsar k8s clueter undefined pods offline counter")
+	}
 }
 
 // scrapeLocal scrapes the local metrics
