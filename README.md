@@ -63,3 +63,11 @@ Helm2
 ```
 helm install kafkaesque/pulsar --name pulsar-monitor --namespace monitoring --values ./config/helm-values/pulsar-monitor-values.yaml
 ```
+
+## Development
+
+#### How to build
+To create a binary under ./bin/pulsar-monitor, run this
+```
+$ ./scripts/ci.sh
+```
