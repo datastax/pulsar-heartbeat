@@ -1,0 +1,33 @@
+replicaCount: 1
+
+image:
+  repository: kesque/pulsar-monitor
+  tag: 1.1.1
+  pullPolicy: IfNotPresent
+
+pulsarmonitor:
+  component: "standalone-pulsar-monitor"
+incluster: false
+
+config:
+  name: monitor-useast1-gcp-latency
+  k8sInClusterMonitorEnabled: "false"
+  alertUrl: https://hooks.slack.com/services/[slack app webhook]
+  pulsarClientToken: eyJhbGciOiJSUzI1...[kesque pulsar JWT]
+
+
+#
+# pubsub latency check
+#
+topicConfigs:
+  - latencyBudgetMs: 999
+    name: pubsub-latency-useast1-gcp-outcluster
+    intervalSeconds: 120
+    pulsarUrl: pulsar+ssl://useast1.gcp.kafkaesque.io:6651
+    topicName: persistent://ming-luo/local-useast1-gcp/latency-test
+    payloadSizes: [15B]
+    numberOfMessages: 2
+    alertPolicy:
+      Ceiling: 5
+      MovingWindowSeconds: 600
+      CeilingInMovingWindow: 5

@@ -39,7 +39,12 @@ $ sudo docker build -t pulsar-monitor .
 Run docker container with Pulsar CA certificate and expose Prometheus metrics for collection.
 
 ``` bash
-$ sudo docker run -d -it -v $HOME/go/src/github.com/kafkaesque-io/pulsar-monitor/config/runtime.yml:/config/runtime.yml -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-bundle.crt -p 8080:8080 --name=pulsar-monitor pulsar-monitor
+$ docker run -d -it -v $HOME/go/src/github.com/kafkaesque-io/pulsar-monitor/config/runtime.yml:/config/runtime.yml -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-bundle.crt -p 8080:8080 --name=pulsar-monitor kesque/pulsar-monitor:1.1.1
+```
+
+If you are monitoring Pulsar cluster managed by Kesque, this is the command since we already include a certificate in the docker image.
+``` bash
+$ docker run -d -it -v $HOME/go/src/github.com/kafkaesque-io/pulsar-monitor/config/runtime.yml:/config/runtime.yml -p 8080:8080 --name=pulsar-monitor kesque/pulsar-monitor:1.1.1
 ```
 
 ## Prometheus
@@ -47,3 +52,14 @@ This program exposes a Prometheus `\metrics` endpoint to allow measured Pulsar l
 
 ## Helm chart
 Here is Pulsar Monitor's [helm chart](https://github.com/kafkaesque-io/pulsar-helm-chart/tree/master/helm-chart-sources/pulsar-monitor)
+
+#### Install helm
+Helm 3
+```
+helm3 install pulsar-monitor kafkaesque/pulsar --namespace monitoring --values ./config/helm-values/pulsar-monitor-values.yaml
+```
+
+Helm2
+```
+helm install kafkaesque/pulsar --name pulsar-monitor --namespace monitoring --values ./config/helm-values/pulsar-monitor-values.yaml
+```

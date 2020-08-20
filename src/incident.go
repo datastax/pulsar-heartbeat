@@ -195,6 +195,10 @@ func CalculateDowntime(component string) {
 // CreateOpsGenieAlert creates an OpsGenie alert
 func CreateOpsGenieAlert(msg Incident, genieKey string) error {
 	Alert(fmt.Sprintf("report incident as pager escalation %v", msg))
+	if genieKey == "" {
+		Alert(fmt.Sprintf("No escalation because genieKey is not configured."))
+		return nil
+	}
 
 	client := retryablehttp.NewClient()
 	client.HTTPClient.Timeout = time.Duration(5) * time.Second
@@ -251,6 +255,10 @@ func CreateOpsGenieAlert(msg Incident, genieKey string) error {
 // DeleteOpsGenieAlert deletes an OpsGenie alert
 // TODO this is not being used since we have no concrete scenario how to clear alerts
 func DeleteOpsGenieAlert(component, requestID string, genieKey string) error {
+	if genieKey == "" {
+		Alert(fmt.Sprintf("No incident deletion because genieKey is not configured."))
+		return nil
+	}
 	client := retryablehttp.NewClient()
 	client.HTTPClient.Timeout = time.Duration(5) * time.Second
 	client.RetryWaitMin = 4 * time.Second

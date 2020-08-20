@@ -15,9 +15,11 @@ import (
 func StartHeartBeat() {
 	genieURL := util.AssignString(GetConfig().OpsGenieConfig.HeartBeatURL, "https://api.opsgenie.com/v2/heartbeats/latency-monitor/ping")
 	genieKey := GetConfig().OpsGenieConfig.HeartbeatKey
-	err := HeartBeatToOpsGenie(genieURL, genieKey)
-	if err != nil {
-		Alert(fmt.Sprintf("OpsGenie error %v", err))
+	if genieKey != "" {
+		err := HeartBeatToOpsGenie(genieURL, genieKey)
+		if err != nil {
+			Alert(fmt.Sprintf("OpsGenie error %v", err))
+		}
 	}
 }
 
