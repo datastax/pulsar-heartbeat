@@ -113,10 +113,18 @@ type K8sClusterCfg struct {
 	AlertPolicy   AlertPolicyCfg `json:"AlertPolicy"`
 }
 
+// BrokersCfg monitors all brokers in the cluster
+type BrokersCfg struct {
+	InClusterRESTURL string         `json:"inclusterRestURL"`
+	IntervalSeconds  int            `json:"intervalSeconds"`
+	AlertPolicy      AlertPolicyCfg `json:"AlertPolicy"`
+}
+
 // Configuration - this server's configuration
 type Configuration struct {
 	Name              string             `json:"name"`
 	Token             string             `json:"token"`
+	BrokersConfig     BrokersCfg         `json:"brokersConfig"`
 	TrustStore        string             `json:"trustStore"`
 	K8sConfig         K8sClusterCfg      `json:"k8sConfig"`
 	AnalyticsConfig   AnalyticsCfg       `json:"analyticsConfig"`

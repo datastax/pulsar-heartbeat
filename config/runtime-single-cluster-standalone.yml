@@ -3,6 +3,9 @@ name: remote-monitor-example
 token: eyJhbGciOiJSUzI1NiJ...[kesque pulsar JWT]
 slackConfig:
   alertUrl: https://hooks.slack.com/services/[slack alert app]
+brokersConfig:
+    intervalSeconds: 62
+    inclusterRestURL: "https://useast2.aws.kafkaesque.io:8964"
 prometheusConfig:
   port: ":8089"
   exposeMetrics: true

@@ -43,6 +43,7 @@ func main() {
 
 	AnalyticsAppStart(util.AssignString(cfg.Name, "dev"))
 	MonitorK8sPulsarCluster()
+	MonitorBrokers()
 	RunInterval(PulsarTenants, util.TimeDuration(cfg.PulsarAdminConfig.IntervalSeconds, 120, time.Second))
 	RunInterval(StartHeartBeat, util.TimeDuration(cfg.OpsGenieConfig.IntervalSeconds, 240, time.Second))
 	RunInterval(UptimeHeartBeat, 30*time.Second) // fixed 30 seconds for heartbeat

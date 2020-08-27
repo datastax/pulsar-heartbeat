@@ -13,3 +13,8 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# do not ship the default configuration file to avoid releasing password accidentally
+runtime.yml
+runtime.json
+runtime.yaml

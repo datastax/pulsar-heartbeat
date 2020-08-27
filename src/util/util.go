@@ -250,3 +250,43 @@ func TokenizeTopicFullName(topicFn string) (isPersistent bool, tenant, namespace
 		return false, "", "", "", fmt.Errorf("missing tenant, namespace, or topic name")
 	}
 }
+
+// PreserveHeaderForRedirect preserves HTTP headers during HTTP redirect
+func PreserveHeaderForRedirect(req *http.Request, via []*http.Request) error {
+	if len(via) >= 50 {
+		return fmt.Errorf("too many redirects in GET CachedProxy")
+	}
+	if len(via) == 0 {
+		return nil
+	}
+	for attr, val := range via[0].Header {
+		if _, ok := req.Header[attr]; !ok {
+			req.Header[attr] = val
+		}
+	}
+	return nil
+}
+
+// MinInt returns a smaller integer of two integers
+func MinInt(a, b int) int {
+	if a >= b {
+		return b
+	}
+	return a
+}
+
+// TopicFnToURL converts fully qualified topic name to url route
+func TopicFnToURL(topicFn string) (string, error) {
+	// non-persistent://tenant/namesapce/topic
+	persistentParts := strings.Split(topicFn, "://")
+	if len(persistentParts) != 2 {
+		return "", fmt.Errorf("invalid topic full name pattern")
+	}
+
+	parts := strings.Split(persistentParts[1], "/")
+	if len(parts) != 3 {
+		return "", fmt.Errorf("missing tenant or namespace or topic")
+	}
+
+	return strings.ReplaceAll(topicFn, "://", "/"), nil
+}
