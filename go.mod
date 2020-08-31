@@ -3,6 +3,7 @@ module github.com/kafkaesque-io/pulsar-monitor
 go 1.13
 
 require (
+	github.com/antonmedv/expr v1.8.8
 	github.com/apache/pulsar-client-go v0.1.0
 	github.com/apex/log v1.9.0
 	github.com/frankban/quicktest v1.10.0 // indirect

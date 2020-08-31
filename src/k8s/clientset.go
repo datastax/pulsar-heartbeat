@@ -37,6 +37,9 @@ const (
 	// BrokerDeployment is the broker deployment name
 	BrokerDeployment = "broker"
 
+	// BrokerSts is the broker deployment name
+	BrokerSts = "brokersts"
+
 	// ProxyDeployment is the proxy deployment name
 	ProxyDeployment = "proxy"
 
@@ -67,6 +70,7 @@ type Client struct {
 	Status           ClusterStatusCode
 	Zookeeper        StatefulSet
 	Bookkeeper       StatefulSet
+	BrokerSts        StatefulSet
 	Broker           Deployment
 	Proxy            Deployment
 	FunctionWorker   StatefulSet
@@ -77,6 +81,7 @@ type ClusterStatus struct {
 	ZookeeperOfflineInstances  int
 	BookkeeperOfflineInstances int
 	BrokerOfflineInstances     int
+	BrokerStsOfflineInstances  int
 	ProxyOfflineInstances      int
 	Status                     ClusterStatusCode
 }
@@ -154,11 +159,25 @@ func buildInClusterConfig() kubernetes.Interface {
 
 // UpdateReplicas updates the replicas for deployments and sts
 func (c *Client) UpdateReplicas() error {
+	brokersts, err := c.getStatefulSets(DefaultPulsarNamespace, BrokerSts)
+	if err != nil {
+		return err
+	}
+	if len(brokersts.Items) == 0 {
+		c.BrokerSts.Replicas = 0
+	} else {
+		c.BrokerSts.Replicas = *(brokersts.Items[0]).Spec.Replicas
+	}
+
 	broker, err := c.getDeployments(DefaultPulsarNamespace, BrokerDeployment)
 	if err != nil {
 		return err
 	}
-	c.Broker.Replicas = *(broker.Items[0]).Spec.Replicas
+	if len(broker.Items) == 0 {
+		c.Broker.Replicas = 0
+	} else {
+		c.Broker.Replicas = *(broker.Items[0]).Spec.Replicas
+	}
 
 	proxy, err := c.getDeployments(DefaultPulsarNamespace, ProxyDeployment)
 	if err != nil {
@@ -196,10 +215,20 @@ func (c *Client) WatchPods(namespace string) error {
 		return err
 	}
 
-	if counts, err := c.runningPodCounts(namespace, "broker"); err == nil {
-		c.Broker.Instances = int32(counts)
-	} else {
-		return err
+	if c.Broker.Replicas > 0 {
+		if counts, err := c.runningPodCounts(namespace, "broker"); err == nil {
+			c.Broker.Instances = int32(counts)
+		} else {
+			return err
+		}
+	}
+
+	if c.BrokerSts.Replicas > 0 {
+		if counts, err := c.runningPodCounts(namespace, "brokersts"); err == nil {
+			c.BrokerSts.Instances = int32(counts)
+		} else {
+			return err
+		}
 	}
 
 	if counts, err := c.runningPodCounts(namespace, "proxy"); err == nil {
@@ -217,6 +246,7 @@ func (c *Client) EvalHealth() (string, ClusterStatus) {
 		ZookeeperOfflineInstances:  int(c.Zookeeper.Replicas - c.Zookeeper.Instances),
 		BookkeeperOfflineInstances: int(c.Bookkeeper.Replicas - c.Bookkeeper.Instances),
 		BrokerOfflineInstances:     int(c.Broker.Replicas - c.Broker.Instances),
+		BrokerStsOfflineInstances:  int(c.BrokerSts.Replicas - c.BrokerSts.Instances),
 		ProxyOfflineInstances:      int(c.Proxy.Replicas - c.Proxy.Instances),
 		Status:                     OK,
 	}
@@ -236,12 +266,20 @@ func (c *Client) EvalHealth() (string, ClusterStatus) {
 		status.Status = updateStatus(status.Status, PartialReady)
 	}
 
-	if c.Broker.Instances == 0 {
-		health = health + fmt.Sprintf("\nCluster error - broker has no running instances out of %d replicas", c.Broker.Replicas)
+	if (c.Broker.Instances + c.BrokerSts.Instances) == 0 {
+		health = health + fmt.Sprintf("\nCluster error - no broker instances is running")
 		status.Status = TotalDown
 	} else if c.Broker.Instances < c.Broker.Replicas {
 		health = fmt.Sprintf("\nCluster warning - broker is running %d instances out of %d", c.Broker.Instances, c.Broker.Replicas)
 		status.Status = updateStatus(status.Status, PartialReady)
+	}
+
+	if c.BrokerSts.Instances == 0 && c.BrokerSts.Replicas > 0 {
+		health = health + fmt.Sprintf("\nCluster error - broker stateful has no running instances out of %d replicas", c.Broker.Replicas)
+		status.Status = TotalDown
+	} else if status.BrokerStsOfflineInstances > 0 {
+		health = health + fmt.Sprintf("\nCluster error - broker statefulset only has %d running instances out of %d replicas", c.BrokerSts.Instances, c.BrokerSts.Replicas)
+		status.Status = TotalDown
 	}
 
 	if c.Proxy.Instances == 0 {

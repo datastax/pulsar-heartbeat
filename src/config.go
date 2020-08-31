@@ -48,6 +48,7 @@ type SiteCfg struct {
 	IntervalSeconds int               `json:"intervalSeconds"`
 	ResponseSeconds int               `json:"responseSeconds"`
 	StatusCode      int               `json:"statusCode"`
+	StatusCodeExpr  string            `json:"statusCodeExpr"`
 	Retries         int               `json:"retries"`
 	AlertPolicy     AlertPolicyCfg    `json:"alertPolicy"`
 }

@@ -66,7 +66,7 @@ func EvaluateClusterHealth(client *k8s.Client) error {
 			lastAlertTime = time.Now()
 		}
 	}
-	log.Printf("k8 cluster status %v", status)
+	log.Printf("k8s cluster status %v", status)
 	return nil
 }
 

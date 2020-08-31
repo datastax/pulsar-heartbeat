@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/antonmedv/expr"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
@@ -37,8 +38,29 @@ func monitorSite(site SiteCfg) error {
 	}
 	PromLatencySum(SiteLatencyGaugeOpt(), site.Name, time.Now().Sub(sentTime))
 
-	if resp.StatusCode != site.StatusCode {
+	if site.StatusCode > 0 && resp.StatusCode != site.StatusCode {
 		return fmt.Errorf("Response statusCode %d does not match the expected code %d", resp.StatusCode, site.StatusCode)
+	}
+
+	if site.StatusCodeExpr != "" {
+		// the literal statusCode must be used in the expression for evaluation
+		env := map[string]interface{}{
+			"statusCode": resp.StatusCode,
+		}
+
+		result, err := expr.Eval(site.StatusCodeExpr, env)
+		if err != nil {
+			return fmt.Errorf("Response code %d does not satisfy expression evaluation %s, error %v",
+				resp.StatusCode, site.StatusCodeExpr, err)
+		}
+		rc, ok := result.(bool)
+		if !ok {
+			return fmt.Errorf("Response code %d evaluation against %s failed to reach a boolean verdict",
+				resp.StatusCode, site.StatusCodeExpr)
+		} else if !rc {
+			return fmt.Errorf("Response code %d evaluation againt %s failed",
+				resp.StatusCode, site.StatusCodeExpr)
+		}
 	}
 
 	return nil
