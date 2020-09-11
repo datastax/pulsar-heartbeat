@@ -51,6 +51,7 @@ func main() {
 	TopicLatencyTestThread()
 	WebSocketTopicLatencyTestThread()
 	PushToPrometheusProxyThread()
+	BuildTenantsUsageThread()
 
 	if cfg.PrometheusConfig.ExposeMetrics {
 		log.Printf("start to listen to http port %s", cfg.PrometheusConfig.Port)

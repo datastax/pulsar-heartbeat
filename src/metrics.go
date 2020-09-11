@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kafkaesque-io/pulsar-monitor/src/metering"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -305,4 +306,35 @@ func PushToPrometheusProxyThread() {
 		}
 	}(proxyInstanceURL, cfg.PrometheusProxyAPIKey)
 
+}
+
+// BuildTenantsUsageThread is the daemon thread that builds last 30s tenants usage and expose to Prometheus metrics
+func BuildTenantsUsageThread() {
+	token := GetConfig().Token
+	if token == "" {
+		log.Printf("tenants usage exits since no token is specified")
+		return
+	}
+
+	prefixURL := GetConfig().BrokersConfig.InClusterRESTURL
+	if prefixURL == "" {
+		log.Printf("tenants usage exits since no in-cluster REST URL prefix is specified")
+		return
+	}
+
+	name := GetConfig().Name
+	interval := time.Duration(metering.SamplingIntervalInSeconds) * time.Second
+
+	log.Printf("build tenants uages from %s", prefixURL)
+	go func(url, jwt, cluster string) {
+		ticker := time.NewTicker(interval)
+		usage := metering.NewTenantsUsage(url, jwt, cluster)
+		usage.UpdateUsages()
+		for {
+			select {
+			case <-ticker.C:
+				usage.UpdateUsages()
+			}
+		}
+	}(prefixURL, token, name)
 }

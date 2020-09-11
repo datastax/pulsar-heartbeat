@@ -24,7 +24,7 @@ type ClusterHealth struct {
 // Get gets the cluster health status
 func (h *ClusterHealth) Get() (k8s.ClusterStatusCode, int) {
 	h.RLock()
-	h.RUnlock()
+	defer h.RUnlock()
 	return h.Status, h.MissingBrokers
 }
 

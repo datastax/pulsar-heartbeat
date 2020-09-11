@@ -290,3 +290,11 @@ func TopicFnToURL(topicFn string) (string, error) {
 
 	return strings.ReplaceAll(topicFn, "://", "/"), nil
 }
+
+// ComputeDelta computes positive delta between last and current integer value, returns a default if the delta is negative
+func ComputeDelta(last, current, defaultValue uint64) uint64 {
+	if last >= current {
+		return defaultValue
+	}
+	return current - last
+}
