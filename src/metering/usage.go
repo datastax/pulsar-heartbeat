@@ -2,6 +2,7 @@ package metering
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -33,6 +34,7 @@ type TenantsUsage struct {
 	token             string
 	cluster           string
 	isInitialized     bool
+	usageByteLimit    uint64
 	messageInGauge    *prometheus.GaugeVec
 	bytesInGauge      *prometheus.GaugeVec
 	messageOutGauge   *prometheus.GaugeVec
@@ -49,15 +51,23 @@ const (
 	// SamplingIntervalInSeconds - interval is 30 seconds
 	// it is important that Prometheus scraping must be set to 30 seconds the same as this samping interval
 	SamplingIntervalInSeconds = 30
+
+	// DefaultUsageByteLimit is set to 100GB
+	DefaultUsageByteLimit = 100000000000
 )
 
 // NewTenantsUsage creates a TenantsUsage
-func NewTenantsUsage(url, pulsarToken, clusterName string) *TenantsUsage {
+func NewTenantsUsage(url, pulsarToken, clusterName string, tenantByteOutLimit uint64) *TenantsUsage {
+	if tenantByteOutLimit < DefaultUsageByteLimit {
+		tenantByteOutLimit = DefaultUsageByteLimit
+	}
+
 	return &TenantsUsage{
 		tenantLatestUsage: make(map[string]Usage),
 		burnellURL:        url,
 		token:             pulsarToken,
 		cluster:           clusterName,
+		usageByteLimit:    tenantByteOutLimit,
 		messageInGauge:    createPromGaugeVec(messagesIn30sGaugeType, "Plusar tenant total number of message in 30s"),
 		bytesInGauge:      createPromGaugeVec(bytesIn30sGaugeType, "Plusar tenant total number of bytes for message in 30s"),
 		messageOutGauge:   createPromGaugeVec(messagesOut30sGaugeType, "Plusar tenant total number of message out 30s"),
@@ -153,7 +163,7 @@ func (t *TenantsUsage) UpdateUsages() {
 	if err != nil {
 		log.Fatalf("failed to get burnell tenants' usage %v", err)
 	}
-	log.Infof("tenants usage %v", usages)
+	// log.Infof("tenants usage %v", usages)
 
 	// build the latest tenant usage
 	for _, u := range usages {
@@ -167,4 +177,23 @@ func (t *TenantsUsage) UpdateUsages() {
 		t.tenantLatestUsage[u.Name] = u
 	}
 	t.isInitialized = true
+}
+
+// ReportHighUsageTenant reports high usage tenant as error return type
+func (t *TenantsUsage) ReportHighUsageTenant() (errStr string) {
+
+	if t.isInitialized {
+		// this is not thread safe but things would not go wrong
+		usages := t.tenantLatestUsage
+
+		for k, usage := range usages {
+			if usage.TotalBytesOut > t.usageByteLimit {
+				errStr = fmt.Sprintf("tenant `%s` - total %d bytes out\n%s", k, usage.TotalBytesOut, errStr)
+			}
+		}
+	}
+	if errStr != "" {
+		return "Please investigate these tenants, in cluster `" + t.cluster + "`, with outbound messages limit over 100GB\n" + errStr
+	}
+	return ""
 }

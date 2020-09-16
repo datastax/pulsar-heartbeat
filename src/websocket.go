@@ -203,7 +203,6 @@ func WebSocketTopicLatencyTestThread() {
 	log.Println(configs)
 
 	for _, cfg := range configs {
-		log.Println(cfg.Name)
 		cfg.reconcileConfig()
 		go func(t WsConfig) {
 			ticker := time.NewTicker(util.TimeDuration(t.IntervalSeconds, 60, time.Second))

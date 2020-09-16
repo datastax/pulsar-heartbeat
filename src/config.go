@@ -121,6 +121,12 @@ type BrokersCfg struct {
 	AlertPolicy      AlertPolicyCfg `json:"AlertPolicy"`
 }
 
+// TenantUsageCfg tenant usage reporting and monitoring
+type TenantUsageCfg struct {
+	OutBytesLimit        uint64 `json:"outBytesLimit"`
+	AlertIntervalMinutes int    `json:"alertIntervalMinutes"`
+}
+
 // Configuration - this server's configuration
 type Configuration struct {
 	Name              string             `json:"name"`
@@ -136,6 +142,7 @@ type Configuration struct {
 	PulsarTopicConfig []TopicCfg         `json:"pulsarTopicConfig"`
 	SitesConfig       SitesCfg           `json:"sitesConfig"`
 	WebSocketConfig   []WsConfig         `json:"webSocketConfig"`
+	TenantUsageConfig TenantUsageCfg     `json:"tenantUsageConfig"`
 }
 
 // AlertPolicyCfg is a set of criteria to evaluation triggers for incident alert

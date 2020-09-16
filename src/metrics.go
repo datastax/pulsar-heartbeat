@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kafkaesque-io/pulsar-monitor/src/metering"
+	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -323,13 +324,34 @@ func BuildTenantsUsageThread() {
 	}
 
 	name := GetConfig().Name
+	tenantBytesOutAlertLimit := GetConfig().TenantUsageConfig.OutBytesLimit
 	interval := time.Duration(metering.SamplingIntervalInSeconds) * time.Second
 
 	log.Printf("build tenants uages from %s", prefixURL)
 	go func(url, jwt, cluster string) {
 		ticker := time.NewTicker(interval)
-		usage := metering.NewTenantsUsage(url, jwt, cluster)
+		usage := metering.NewTenantsUsage(url, jwt, cluster, tenantBytesOutAlertLimit)
 		usage.UpdateUsages()
+		errStr := usage.ReportHighUsageTenant()
+		if errStr != "" {
+			Alert(errStr)
+		}
+
+		// monitor and report over limit tenant's usage
+		go func() {
+			alertInterval := util.TimeDuration(GetConfig().TenantUsageConfig.AlertIntervalMinutes, 120, time.Minute)
+			usageAlertTicker := time.NewTicker(alertInterval)
+			select {
+			case <-usageAlertTicker.C:
+				errStr := usage.ReportHighUsageTenant()
+				if errStr != "" {
+					Alert(errStr)
+				}
+			}
+
+		}()
+
+		// calculate tenant usage and send to prometheus
 		for {
 			select {
 			case <-ticker.C:
