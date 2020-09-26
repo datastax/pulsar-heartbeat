@@ -268,18 +268,23 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 		AnalyticsLatencyReport(clusterName, testName, "message delivery out of order", int(result.Latency.Milliseconds()), false, true)
 		Alert(errMsg)
 	} else if result.Latency > expectedLatency {
-		stdVerdict.Add(float64(result.Latency.Milliseconds()))
+		stdVerdict.Add(float64(result.Latency.Microseconds()))
 		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over the budget %v",
 			clusterName, testName, result.Latency, expectedLatency)
 		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, false)
 		Alert(errMsg)
 		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
-	} else if stddev, mean, within3Sigma := stdVerdict.Push(float64(result.Latency.Milliseconds())); !within3Sigma {
-		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over three standard deviation %v ms and mean is %v ms",
-			clusterName, testName, result.Latency, stddev, mean)
+	} else if stddev, mean, within3Sigma := stdVerdict.Push(float64(result.Latency.Microseconds())); !within3Sigma && stddev > 0 && mean > 0 {
+		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v μs over three standard deviation %v μs and mean is %v μs",
+			clusterName, testName, result.Latency.Microseconds(), stddev, mean)
+		// 5 ms = 5,000 μs
+		if mean > 5000 {
+			errMsg = fmt.Sprintf("cluster %s, %s test message latency %v over three standard deviation %v ms and mean is %v ms",
+				clusterName, testName, result.Latency, float64(stddev/1000.0), float64(mean/1000.0))
+		}
 		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, false)
 		Alert(errMsg)
-		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
+		// ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
 	} else {
 		log.Printf("succeeded to sent %d messages to topic %s on %s test cluster %s\n",
 			len(payloads), topicCfg.TopicName, testName, topicCfg.PulsarURL)
