@@ -12,6 +12,7 @@ This is a ops monitoring tool to
 - [x] monitor individual Pulsar broker's health
 - [ ] Pulsar function trigger over HTTP interface
 - [x] incident alert with OpsGenie
+- [x] automatically resolve alerts
 - [x] tracking analytics and usage
 - [x] dead man's snitch heartbeat monitor with OpsGenie
 - [x] alert on Slack
@@ -37,7 +38,7 @@ The runtime.json file must be mounted as /app/runtime.json
 
 This runs a multi stage build that produces a 18MB docker image.
 ```
-$ sudo docker build -t pulsar-monitor .
+$ make
 ```
 
 Run docker container with Pulsar CA certificate and expose Prometheus metrics for collection.

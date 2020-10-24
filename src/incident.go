@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
+	"sync"
 	"time"
 
+	"github.com/apex/log"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
@@ -18,6 +19,7 @@ import (
 
 type incidentRecord struct {
 	requestID string
+	alertID   string
 	createdAt time.Time
 }
 
@@ -28,12 +30,17 @@ var (
 	// key is incident identifier, value is OpsGenie requestId for delete purpose
 	incidents = make(map[string]incidentRecord)
 
+	// lock for incidents map
+	incidentsLock = &sync.RWMutex{}
+
+	// TODO: these two map are not thread safe.
 	// track the downtime, since downtime won't be calculated when producing message works
 	// it has different defintion than incident
 	// this is only applicable when Pulsar Monitor is deployed within a Pulsar cluster
 	downtimeTracker = make(map[string]incidentRecord)
 
-	incidentTrackers = make(map[string]*IncidentAlertPolicy)
+	incidentTrackers     = make(map[string]*IncidentAlertPolicy)
+	incidentTrackersLock = &sync.RWMutex{}
 )
 
 const (
@@ -50,12 +57,37 @@ type Incident struct {
 	Tags        []string `json:"tags"`
 }
 
-// OpsGenieAlertResponse is the response struct returned by OpsGenie
+// OpsGenieAlertCreateResponse is the response struct returned by OpsGenie
 // https://docs.opsgenie.com/docs/alert-api#section-create-alert
-type OpsGenieAlertResponse struct {
+type OpsGenieAlertCreateResponse struct {
 	Result    string  `json:"result"`
 	Took      float64 `json:"took"`
 	RequestID string  `json:"requestId"`
+}
+
+// OpsGenieAlertGetResponse is the response struct returned by OpsGenie
+// https://docs.opsgenie.com/docs/alert-api#section-create-alert
+type OpsGenieAlertGetResponse struct {
+	Data      alertGetData `json:"data"`
+	Took      float64      `json:"took"`
+	RequestID string       `json:"requestId"`
+}
+
+// alertGetData is data part of OpsGenieAlertGetResponse
+// only creates the attributes that we are interested
+type alertGetData struct {
+	Success   bool   `json:"success"`
+	IsSuccess bool   `json:"isSuccess"`
+	Status    string `json:"status"`
+	AlertID   string `json:"alertId"`
+	Alias     string `json:"alias"`
+}
+
+// OpsGenieAlertCloseRequest is the POST request payload json
+type OpsGenieAlertCloseRequest struct {
+	User   string `json:"user"`
+	Source string `json:"source"`
+	Note   string `json:"note"`
 }
 
 // IncidentAlertPolicy tracks and reports incident when threshold is reached
@@ -113,6 +145,8 @@ func newPolicy(component, msg, desc string, eval *AlertPolicyCfg) IncidentAlertP
 }
 
 func trackIncident(component, msg, desc string, eval *AlertPolicyCfg) bool {
+	incidentTrackersLock.Lock()
+	defer incidentTrackersLock.Unlock()
 	if tracker, ok := incidentTrackers[component]; ok {
 		return tracker.report(component, msg, desc)
 	}
@@ -134,6 +168,8 @@ func ReportIncident(component, alias, msg, desc string, eval *AlertPolicyCfg) {
 func ClearIncident(component string) {
 	RemoveIncident(component)
 
+	incidentTrackersLock.Lock()
+	defer incidentTrackersLock.Unlock()
 	if tracker, ok := incidentTrackers[component]; ok {
 		if tracker.clear() == 0 {
 			delete(incidentTrackers, component)
@@ -168,15 +204,27 @@ func CreateIncident(component, alias, msg, desc, priority string) {
 
 // RemoveIncident removes an existing incident
 func RemoveIncident(component string) {
-	if record, ok := incidents[component]; ok {
+	incidentsLock.RLock()
+	record, ok := incidents[component]
+	incidentsLock.RUnlock()
+
+	if ok {
+		incidentsLock.Lock()
 		delete(incidents, component)
+		incidentsLock.Unlock()
+
 		downtimeDuration := time.Since(record.createdAt)
 		seconds := int(downtimeDuration.Seconds())
 		AnalyticsClearIncident(component, seconds)
 		PromLatencySum(PubSubDowntimeGaugeOpt(), component, downtimeDuration)
 
+		if record.alertID == "" {
+			log.Errorf("%s unable to identify alert with request id %s for auto clear operation", component, record.requestID)
+			return
+		}
+		log.Infof("auto record alertID %v", record)
 		genieKey := GetConfig().OpsGenieConfig.AlertKey
-		err := DeleteOpsGenieAlert(component, record.requestID, genieKey)
+		err := CloseOpsGenieAlert(component, record.alertID, genieKey)
 		if err != nil {
 			Alert(fmt.Sprintf("Opsgenie remove incident error %v", err))
 		}
@@ -192,12 +240,11 @@ func CalculateDowntime(component string) {
 	}
 }
 
-// CreateOpsGenieAlert creates an OpsGenie alert
-func CreateOpsGenieAlert(msg Incident, genieKey string) error {
-	Alert(fmt.Sprintf("report incident as pager escalation %v", msg))
+func opsGenieHTTP(method, endpoint, genieKey string, payload *bytes.Buffer) (*http.Response, error) {
 	if genieKey == "" {
-		Alert(fmt.Sprintf("No escalation because genieKey is not configured."))
-		return nil
+		errStr := fmt.Sprintf("Alert creation failed. %s has not configured with genieKey.", Config.Name)
+		Alert(errStr)
+		return nil, fmt.Errorf(errStr)
 	}
 
 	client := retryablehttp.NewClient()
@@ -206,20 +253,28 @@ func CreateOpsGenieAlert(msg Incident, genieKey string) error {
 	client.RetryWaitMax = 64 * time.Second
 	client.RetryMax = 2
 
-	buf, err := json.Marshal(msg)
+	log.Infof("method %v request URL %v", method, opsGenieAlertURL+endpoint)
+	req, err := retryablehttp.NewRequest(method, opsGenieAlertURL+endpoint, payload)
 	if err != nil {
-		return err
-	}
-
-	req, err := retryablehttp.NewRequest(http.MethodPost, opsGenieAlertURL, bytes.NewBuffer(buf))
-	if err != nil {
-		return err
+		return nil, err
 	}
 
 	req.Header.Set("Authorization", genieKey)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := client.Do(req)
+	return client.Do(req)
+}
+
+// CreateOpsGenieAlert creates an OpsGenie alert
+func CreateOpsGenieAlert(msg Incident, genieKey string) error {
+	Alert(fmt.Sprintf("report incident as pager escalation %v", msg))
+
+	buf, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	resp, err := opsGenieHTTP(http.MethodPost, "", genieKey, bytes.NewBuffer(buf))
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -227,9 +282,8 @@ func CreateOpsGenieAlert(msg Incident, genieKey string) error {
 		return err
 	}
 
-	log.Print("opsgenie status code ", resp.StatusCode)
 	if resp.StatusCode > 300 {
-		return fmt.Errorf("Opsgenie returns incorrect status code %d", resp.StatusCode)
+		return fmt.Errorf("Create Opsgenie alert returns incorrect status code %d", resp.StatusCode)
 	}
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
@@ -237,7 +291,7 @@ func CreateOpsGenieAlert(msg Incident, genieKey string) error {
 		return err
 	}
 
-	alertResp := OpsGenieAlertResponse{}
+	alertResp := OpsGenieAlertCreateResponse{}
 	err = json.Unmarshal(bodyBytes, &alertResp)
 	if err != nil {
 		return err
@@ -247,35 +301,79 @@ func CreateOpsGenieAlert(msg Incident, genieKey string) error {
 		requestID: alertResp.RequestID,
 		createdAt: time.Now(),
 	}
+
+	incidentsLock.Lock()
+	defer incidentsLock.Unlock()
 	incidents[msg.Entity] = incident
 	downtimeTracker[msg.Entity] = incident
+
+	// there is a delay when the alert is created by opsgenie, so we use retry
+	// time out has to be less than the latency time interval
+	go getOpsGenieAlertIDRetry(msg.Entity, incident.requestID, genieKey, 4*time.Second)
 	return nil
 }
 
-// DeleteOpsGenieAlert deletes an OpsGenie alert
-// TODO this is not being used since we have no concrete scenario how to clear alerts
-func DeleteOpsGenieAlert(component, requestID string, genieKey string) error {
-	if genieKey == "" {
-		Alert(fmt.Sprintf("No incident deletion because genieKey is not configured."))
-		return nil
+func getOpsGenieAlertIDRetry(entity, requestID, genieKey string, timeout time.Duration) {
+	start := time.Now()
+	for time.Since(start) < timeout {
+		time.Sleep(200 * time.Millisecond) //TODO: could have exponatial back off retry
+		alertID, err := getOpsGenieAlertID(requestID, genieKey)
+		if err == nil {
+			incidentsLock.Lock()
+			incident, ok := incidents[entity]
+			if ok {
+				incident.alertID = alertID
+				incidents[entity] = incident
+			}
+			log.Infof("found...")
+			incidentsLock.Unlock()
+			return
+		}
 	}
-	client := retryablehttp.NewClient()
-	client.HTTPClient.Timeout = time.Duration(5) * time.Second
-	client.RetryWaitMin = 4 * time.Second
-	client.RetryWaitMax = 64 * time.Second
-	client.RetryMax = 2
+	log.Errorf("%s unable to find alert with requestId %s", entity, requestID)
+}
 
-	deletionURL := fmt.Sprintf("%s/%s", opsGenieAlertURL, requestID)
+// getOpsGenieAlertID gets alertID from a created alert.
+// alertID is used for alert clear purpose
+func getOpsGenieAlertID(requestID, genieKey string) (alertID string, err error) {
+	resp, err := opsGenieHTTP(http.MethodGet, "/requests/"+requestID, genieKey, &bytes.Buffer{})
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return "", err
+	}
 
-	req, err := retryablehttp.NewRequest(http.MethodDelete, deletionURL, nil)
+	if resp.StatusCode > 300 {
+		return "", fmt.Errorf("Get Opsgenie alert returns incorrect status code %d", resp.StatusCode)
+	}
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	alertResp := OpsGenieAlertGetResponse{}
+	err = json.Unmarshal(bodyBytes, &alertResp)
+	if err != nil {
+		return "", err
+	}
+
+	return alertResp.Data.AlertID, nil
+}
+
+// CloseOpsGenieAlert deletes an OpsGenie alert
+func CloseOpsGenieAlert(component, alertID string, genieKey string) error {
+	buf, err := json.Marshal(OpsGenieAlertCloseRequest{
+		User:   "pulsar monitor",
+		Source: component,
+		Note:   "*automatically resolved the alert* (alertId) " + alertID,
+	})
 	if err != nil {
 		return err
 	}
 
-	req.Header.Set("Authorization", genieKey)
-	req.Header.Add("Content-Type", "application/json")
-
-	resp, err := client.Do(req)
+	resp, err := opsGenieHTTP(http.MethodPost, fmt.Sprintf("/%s/close?identifierType=id", alertID), genieKey, bytes.NewBuffer(buf))
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -283,21 +381,8 @@ func DeleteOpsGenieAlert(component, requestID string, genieKey string) error {
 		return err
 	}
 
-	log.Print("opsgenie status code ", resp.StatusCode)
 	if resp.StatusCode > 300 {
-		return fmt.Errorf("Opsgenie returns incorrect status code %d", resp.StatusCode)
+		return fmt.Errorf("Close Opsgenie alert returns incorrect status code %d", resp.StatusCode)
 	}
-
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	alertResp := OpsGenieAlertResponse{}
-	err = json.Unmarshal(bodyBytes, &alertResp)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }

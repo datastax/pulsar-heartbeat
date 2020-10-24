@@ -274,16 +274,17 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, false)
 		Alert(errMsg)
 		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
-	} else if stddev, mean, within3Sigma := stdVerdict.Push(float64(result.Latency.Microseconds())); !within3Sigma && stddev > 0 && mean > 0 {
-		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v μs over three standard deviation %v μs and mean is %v μs",
+	} else if stddev, mean, within6Sigma := stdVerdict.Push(float64(result.Latency.Microseconds())); !within6Sigma && stddev > 0 && mean > 0 {
+		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v μs over six standard deviation %v μs and mean is %v μs",
 			clusterName, testName, result.Latency.Microseconds(), stddev, mean)
 		// 5 ms = 5,000 μs
 		if mean > 5000 {
-			errMsg = fmt.Sprintf("cluster %s, %s test message latency %v over three standard deviation %v ms and mean is %v ms",
+			errMsg = fmt.Sprintf("cluster %s, %s test message latency %v over six standard deviation %v ms and mean is %v ms",
 				clusterName, testName, result.Latency, float64(stddev/1000.0), float64(mean/1000.0))
 		}
 		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, false)
 		Alert(errMsg)
+		// standard deviation does not generate alerts
 		// ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
 	} else {
 		log.Printf("succeeded to sent %d messages to topic %s on %s test cluster %s\n",
@@ -337,5 +338,6 @@ func testPartitionTopic(clusterName, token string, cfg TopicCfg) {
 		ReportIncident(clusterName, clusterName, "partition topic test has over budget latency", errMsg, &cfg.AlertPolicy)
 	} else {
 		log.Printf("%d partition topics test concluded with latency %v", pt.NumberOfPartitions, latency)
+		ClearIncident(clusterName)
 	}
 }

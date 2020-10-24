@@ -73,6 +73,8 @@ func mon(site SiteCfg) {
 		title := fmt.Sprintf("persisted kafkaesque.io %s endpoint failure", site.Name)
 		Alert(errMsg)
 		ReportIncident(site.Name, site.Name, title, errMsg, &site.AlertPolicy)
+	} else {
+		ClearIncident(site.Name)
 	}
 }
 

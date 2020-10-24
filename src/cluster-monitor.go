@@ -2,17 +2,19 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
+	"github.com/apex/log"
 	"github.com/kafkaesque-io/pulsar-monitor/src/k8s"
 )
 
 // K8s pulsar cluster monitor
 var (
-	lastAlertTime time.Time = time.Now()
+	lastAlertMessageTime time.Time = time.Now()
 )
+
+const clusterMonInterval = 10 * time.Second
 
 // ClusterHealth a cluster health struct
 type ClusterHealth struct {
@@ -39,7 +41,8 @@ func (h *ClusterHealth) Set(status k8s.ClusterStatusCode, offlineBrokers int) {
 // EvaluateClusterHealth evaluates and reports the k8s cluster health
 func EvaluateClusterHealth(client *k8s.Client) error {
 	cfg := GetConfig().K8sConfig
-	cluster := GetConfig().Name // again this is for in-cluster monitoring only
+	cluster := GetConfig().Name + "-in-cluster"
+	// again this is for in-cluster monitoring only
 
 	if err := client.UpdateReplicas(); err != nil {
 		return err
@@ -60,13 +63,15 @@ func EvaluateClusterHealth(client *k8s.Client) error {
 		if status.Status == k8s.TotalDown {
 			Alert(errMsg)
 			ReportIncident(cluster, cluster, "kubernete cluster is down, reported by pulsar-monitor", errMsg, &cfg.AlertPolicy)
-		} else if time.Since(lastAlertTime) > 1*time.Minute {
+		} else if time.Since(lastAlertMessageTime) > 1*time.Minute {
 			// tune down the alert verbosity at every minute
 			Alert(errMsg)
-			lastAlertTime = time.Now()
+			lastAlertMessageTime = time.Now()
 		}
+	} else {
+		ClearIncident(cluster)
 	}
-	log.Printf("k8s cluster status %v", status)
+	log.Infof("k8s cluster status %v", status)
 	return nil
 }
 
@@ -79,18 +84,18 @@ func MonitorK8sPulsarCluster() error {
 
 	clientset, err := k8s.GetK8sClient()
 	if err != nil {
-		log.Printf("failed to get k8s clientset %v or get pods under pulsar namespace", err)
+		log.Errorf("failed to get k8s clientset %v or get pods under pulsar namespace", err)
 		return err
 	}
 
 	go func(client *k8s.Client) {
-		log.Println("start k8s cluster monitoring ...")
-		ticker := time.NewTicker(10 * time.Second)
+		log.Infof("start k8s cluster monitoring ...")
+		ticker := time.NewTicker(clusterMonInterval)
 		for {
 			select {
 			case <-ticker.C:
 				if err := EvaluateClusterHealth(clientset); err != nil {
-					log.Printf("k8s monitoring failed to watchpods error: %v", err)
+					log.Errorf("k8s monitoring failed to watchpods error: %v", err)
 				}
 			}
 		}
