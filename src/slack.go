@@ -3,10 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
-	"log"
+	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/apex/log"
 )
 
 // SlackMessage is the message struct to be posted for Slack
@@ -19,12 +20,15 @@ type SlackMessage struct {
 
 // Alert alerts to slack, email, text.
 func Alert(msg string) {
-	log.Println("error ", msg)
+	log.Errorf("Alert %s", msg)
+	if GetConfig().SlackConfig.AlertURL == "" {
+		return
+	}
 	err := SendSlackNotification(GetConfig().SlackConfig.AlertURL, SlackMessage{
 		Text: msg,
 	})
 	if err != nil {
-		log.Println("slack error ", err)
+		log.Errorf("slack error %v", err)
 	}
 }
 
@@ -51,8 +55,7 @@ func SendSlackNotification(webhookURL string, msg SlackMessage) error {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(resp.Body)
 	if buf.String() != "ok" {
-		log.Println(buf.String())
-		return errors.New("Non-ok response returned from Slack")
+		return fmt.Errorf("Non-ok response returned from Slack, message %s", buf.String())
 	}
 	return nil
 }

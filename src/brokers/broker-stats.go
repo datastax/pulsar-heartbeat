@@ -18,55 +18,65 @@ import (
 
 var statsLog = log.WithFields(log.Fields{"app": "broker health monitor"})
 
-// BrokerMonitor is the
-type BrokerMonitor struct {
-	RESTURL              string
-	token                string
-	ExpectedBrokerNumber int
-}
-
 const (
 	topicStatsDBTable = "topic-stats"
 )
 
-// BrokerStats is per broker statistics
-type BrokerStats struct {
-	Broker string                                                  `json:"broker"`
-	Data   map[string]map[string]map[string]map[string]interface{} `json:"data"`
-}
-
-// Stats is the json response object for REST API
-type Stats struct {
-	Total  int           `json:"total"`
-	Offset int           `json:"offset"`
-	Data   []BrokerStats `json:"data"`
-}
-
-// TopicStats is the usage for topic on each individual broker
-type TopicStats struct {
-	ID        string      `json:"id"` // ID is the topic fullname
-	Tenant    string      `json:"tenant"`
-	Namespace string      `json:"namespace"`
-	Topic     string      `json:"topic"`
-	Data      interface{} `json:"data"`
-	UpdatedAt time.Time   `json:"updatedAt"`
-}
-
-// brokersTopicsQuery returns a map of broker and topic full name, and error of this operation
-func brokersTopicsQuery(urlString, token string) (map[string][]string, error) {
-	// key is tenant, value is partition topic name
-	var brokerTopicMap = make(map[string][]string)
-
-	if !strings.HasPrefix(urlString, "http") {
-		urlString = "http://" + urlString
+// GetBrokers gets a list of brokers and ports
+func GetBrokers(restBaseURL, clusterName, token string) ([]string, error) {
+	brokersURL := util.SingleSlashJoin(restBaseURL, "admin/v2/brokers/"+clusterName)
+	newRequest, err := http.NewRequest(http.MethodGet, brokersURL, nil)
+	if err != nil {
+		return nil, err
 	}
-	topicStatsURL := util.SingleSlashJoin(urlString, "admin/v2/broker-stats/topics")
+	newRequest.Header.Add("user-agent", "pulsar-monitor")
+	newRequest.Header.Add("Authorization", "Bearer "+token)
+	client := &http.Client{
+		CheckRedirect: util.PreserveHeaderForRedirect,
+	}
+	resp, err := client.Do(newRequest)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode > 300 {
+		return nil, fmt.Errorf("failed to get a list of brokers, returns incorrect status code %d", resp.StatusCode)
+	}
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	brokers := []string{}
+	err = json.Unmarshal(bodyBytes, &brokers)
+	if err != nil {
+		return nil, err
+	}
+
+	return brokers, nil
+}
+
+// required configuration cluster name and broker url
+// 1. get a list of broker ips
+// 2. query each broker individually
+//
+
+// BrokerTopicsQuery returns a map of broker and topic full name, or error of this operation
+func BrokerTopicsQuery(brokerBaseURL, token string) ([]string, error) {
+	// key is tenant, value is partition topic name
+	if !strings.HasPrefix(brokerBaseURL, "http") {
+		brokerBaseURL = "http://" + brokerBaseURL
+	}
+	topicStatsURL := util.SingleSlashJoin(brokerBaseURL, "admin/v2/broker-stats/topics")
 	statsLog.Debugf(" proxy request route is %s\n", topicStatsURL)
 
 	newRequest, err := http.NewRequest(http.MethodGet, topicStatsURL, nil)
 	if err != nil {
-		statsLog.Errorf("make http request %s error %v", topicStatsURL, err)
-		return brokerTopicMap, err
+		return nil, err
 	}
 	newRequest.Header.Add("user-agent", "pulsar-monitor")
 	newRequest.Header.Add("Authorization", "Bearer "+token)
@@ -78,52 +88,46 @@ func brokersTopicsQuery(urlString, token string) (map[string][]string, error) {
 		defer response.Body.Close()
 	}
 	if err != nil {
-		statsLog.Errorf("make http request %s error %v", topicStatsURL, err)
-		return brokerTopicMap, err
+		return nil, err
 	}
 
 	if response.StatusCode != http.StatusOK {
-		statsLog.Errorf("GET broker topic stats %s response status code %d", topicStatsURL, response.StatusCode)
-		return brokerTopicMap, err
+		return nil, err
 	}
 
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		statsLog.Errorf("GET broker topic stats request %s error %v", topicStatsURL, err)
-		return brokerTopicMap, err
+		return nil, err
 	}
 
-	var brokers Stats
-	if err = json.Unmarshal(body, &brokers); err != nil {
-		statsLog.Errorf("GET broker topic stats request %s unmarshal error %v", topicStatsURL, err)
-		return brokerTopicMap, err
+	var namespaces map[string]map[string]map[string]map[string]interface{}
+	if err = json.Unmarshal(body, &namespaces); err != nil {
+		return nil, err
 	}
 
-	for _, broker := range brokers.Data {
-		var topics []string
-		for k, v := range broker.Data {
-			tenant := strings.Split(k, "/")[0]
-			statsLog.Debugf("namespace %s tenant %s", k, tenant)
+	topics := []string{}
+	for k, v := range namespaces {
+		tenant := strings.Split(k, "/")[0]
+		statsLog.Debugf("namespace %s tenant %s", k, tenant)
 
-			for bundleKey, v2 := range v {
-				statsLog.Debugf("  bundle %s", bundleKey)
-				for persistentKey, v3 := range v2 {
-					statsLog.Debugf("    %s key", persistentKey)
+		for bundleKey, v2 := range v {
+			statsLog.Debugf("  bundle %s", bundleKey)
+			for persistentKey, v3 := range v2 {
+				statsLog.Debugf("    %s key", persistentKey)
 
-					for topicFn := range v3 {
-						// statsLog.Infof("      topic name %s", topicFn)
-						topics = append(topics, topicFn)
-					}
+				for topicFn := range v3 {
+					// statsLog.Infof("      topic name %s", topicFn)
+					topics = append(topics, topicFn)
 				}
 			}
 		}
-		brokerTopicMap[broker.Broker] = topics
 	}
-
-	return brokerTopicMap, nil
+	return topics, nil
 }
 
-func brokerHealthCheck(broker, token string) error {
+// BrokerHealthCheck calls broker's health endpoint
+func BrokerHealthCheck(broker, token string) error {
 	// key is tenant, value is partition topic name
 	if !strings.HasPrefix(broker, "http") {
 		broker = "http://" + broker
@@ -192,17 +196,28 @@ func QueryTopicStats(url, token string) error {
 }
 
 // TestBrokers evaluates all brokers' health
-func TestBrokers(urlPrefix, token string) (int, error) {
-	brokerTopics, err := brokersTopicsQuery(urlPrefix, token)
+func TestBrokers(urlPrefix, clusterName, token string) (int, error) {
+	brokers, err := GetBrokers(urlPrefix, clusterName, token)
 	if err != nil {
 		return 0, err
 	}
 
+	log.Debugf("got a list of brokers %v", brokers)
 	failedBrokers := 0
-	errorStr := ""
-	for brokerName, topics := range brokerTopics {
-		if err := brokerHealthCheck(brokerName, token); err != nil {
-			errorStr = errorStr + ";;" + err.Error()
+	errStr := ""
+	for _, brokerURL := range brokers {
+		// check the broker health
+		if err := BrokerHealthCheck(brokerURL, token); err != nil {
+			errStr = errStr + ";;" + err.Error()
+			failedBrokers++
+			continue
+		}
+		log.Debugf("broker %s health ok", brokerURL)
+
+		// Get broker topic stats
+		topics, err := BrokerTopicsQuery(brokerURL, token)
+		if err != nil {
+			errStr = errStr + ";;" + err.Error()
 			failedBrokers++
 			continue
 		}
@@ -221,7 +236,7 @@ func TestBrokers(urlPrefix, token string) (int, error) {
 			url = util.SingleSlashJoin(util.SingleSlashJoin(urlPrefix, "/admin/v2/"), url+"/stats")
 			err = QueryTopicStats(url, token)
 			if err != nil {
-				errorStr = errorStr + ";;" + err.Error()
+				errStr = errStr + ";;" + err.Error()
 				failureCount++
 			}
 			count++
@@ -234,11 +249,12 @@ func TestBrokers(urlPrefix, token string) (int, error) {
 				break
 			}
 		}
-		statsLog.Infof("broker %s health monitor required %d topic stats test, failed %d test", brokerName, count, failureCount)
+		statsLog.Infof("broker %s health monitor required %d topic stats test, failed %d test", brokerURL, count, failureCount)
 	}
-	statsLog.Infof("failed %d brokers out of total %d brokers", failedBrokers, len(brokerTopics))
-	if errorStr != "" {
-		return failedBrokers, errors.Errorf(errorStr)
+
+	statsLog.Infof("cluster %s has %d failed brokers out of total %d brokers", clusterName, failedBrokers, len(brokers))
+	if errStr != "" {
+		return failedBrokers, errors.Errorf(errStr)
 	}
 
 	return failedBrokers, nil

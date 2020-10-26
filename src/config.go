@@ -129,7 +129,11 @@ type TenantUsageCfg struct {
 
 // Configuration - this server's configuration
 type Configuration struct {
-	Name              string             `json:"name"`
+	// Name is the Pulsar cluster name, it is mandatory
+	Name string `json:"name"`
+	// ClusterName is the Pulsar cluster name if the Name cannot be used as the Pulsar cluster name, optional
+	ClusterName string `json:"clusterName"`
+	// Token is a Pulsar JWT can be used for both client client or http admin client
 	Token             string             `json:"token"`
 	BrokersConfig     BrokersCfg         `json:"brokersConfig"`
 	TrustStore        string             `json:"trustStore"`

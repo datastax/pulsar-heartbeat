@@ -8,14 +8,14 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
-	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
 
 // StartHeartBeat starts heartbeat monitoring the program by OpsGenie
 func StartHeartBeat() {
-	genieURL := util.AssignString(GetConfig().OpsGenieConfig.HeartBeatURL, "https://api.opsgenie.com/v2/heartbeats/latency-monitor/ping")
+	// opsgenie url in the format of "https://api.opsgenie.com/v2/heartbeats/<component>/ping"
+	genieURL := GetConfig().OpsGenieConfig.HeartBeatURL
 	genieKey := GetConfig().OpsGenieConfig.HeartbeatKey
-	if genieKey != "" {
+	if genieURL != "" {
 		err := HeartBeatToOpsGenie(genieURL, genieKey)
 		if err != nil {
 			Alert(fmt.Sprintf("OpsGenie error %v", err))

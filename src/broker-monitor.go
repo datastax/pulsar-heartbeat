@@ -14,7 +14,8 @@ func EvaluateBrokers(prefixURL, token string) error {
 	name := GetConfig().Name + "-brokers" // again this is for in-cluster monitoring only
 
 	cfg := GetConfig().BrokersConfig
-	failedBrokers, err := brokers.TestBrokers(prefixURL, token)
+	clusterName := util.AssignString(GetConfig().ClusterName, GetConfig().Name)
+	failedBrokers, err := brokers.TestBrokers(prefixURL, clusterName, token)
 
 	if failedBrokers > 0 {
 		errMsg := fmt.Sprintf("cluster %s has %d unhealthy brokers, error message %v", name, failedBrokers, err)
