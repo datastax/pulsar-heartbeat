@@ -1,0 +1,57 @@
+{
+    "prometheusConfig": {
+        "port": ":8083",
+        "exposeMetrics": true
+    },
+    "slackConfig": {
+        "alertUrl": ""
+    },
+
+    "name": "localhost",
+    "opsGenieConfig": {
+        "intervalSeconds": 180,
+        "heartbeatKey": "",
+        "alertKey": ""
+    },
+    "pulsarOpsConfig": {
+        "intervalSeconds": 120,
+        "masterToken": "eyJhbGciOiJSUzI",
+        "clusters": [
+            {
+                "name": "localhost",
+                "alertPolicy": {
+                    "Ceiling": 10,
+                    "MovingWindowSeconds": 30,
+                    "CeilingInMovingWindow": 10
+                }
+            }
+        ]
+    },
+    "pulsarFunctionsConfig": {},
+    "pulsarPerfConfig": {
+        "intervalSeconds": 120,
+        "token": "",
+        "topicCfgs": [
+            {
+                "latencyBudgetMs": 360,
+                "pulsarUrl": "pulsar+ssl://localhost:6651",
+                "topicName": "persistent://public/default/reserved-cluster-monitoring",
+                "alertPolicy": {
+                    "Ceiling": 30,
+                    "MovingWindowSeconds": 600,
+                    "CeilingInMovingWindow": 5
+                }
+            },
+            {
+                "latencyBudgetMs": 2400,
+                "pulsarUrl": "pulsar+ssl://host:6651",
+                "topicName": "persistent://public/default/reserved-cluster-monitoring",
+                "alertPolicy": {
+                    "Ceiling": 3,
+                    "MovingWindowSeconds": 600,
+                    "CeilingInMovingWindow": 5
+                }
+            }
+        ]
+    }
+}

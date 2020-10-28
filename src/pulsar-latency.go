@@ -34,7 +34,6 @@ type MsgResult struct {
 
 // PubSubLatency the latency including successful produce and consume of a message
 func PubSubLatency(clusterName, tokenStr, uri, topicName, outputTopic, msgPrefix, expectedSuffix string, payloads [][]byte, maxPayloadSize int) (MsgResult, error) {
-	// uri is in the form of pulsar+ssl://useast1.gcp.kafkaesque.io:6651
 	client, ok := clients[uri]
 	if !ok {
 		clientOpt := pulsar.ClientOptions{
@@ -260,19 +259,19 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 	log.Printf("cluster %s has message latency %v", clusterName, result.Latency)
 	if err != nil {
 		errMsg := fmt.Sprintf("cluster %s, %s latency test Pulsar error: %v", clusterName, testName, err)
-		Alert(errMsg)
+		VerboseAlert(clusterName+"-latency-err", errMsg, 3*time.Minute)
 		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
 		AnalyticsLatencyReport(clusterName, testName, err.Error(), -1, false, false)
 	} else if !result.InOrderDelivery {
 		errMsg := fmt.Sprintf("cluster %s, %s test Pulsar message received out of order", clusterName, testName)
 		AnalyticsLatencyReport(clusterName, testName, "message delivery out of order", int(result.Latency.Milliseconds()), false, true)
-		Alert(errMsg)
+		VerboseAlert(clusterName+"-latency-outoforder", errMsg, 3*time.Minute)
 	} else if result.Latency > expectedLatency {
 		stdVerdict.Add(float64(result.Latency.Microseconds()))
 		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over the budget %v",
 			clusterName, testName, result.Latency, expectedLatency)
 		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, false)
-		Alert(errMsg)
+		VerboseAlert(clusterName+"-latency", errMsg, 3*time.Minute)
 		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
 	} else if stddev, mean, within6Sigma := stdVerdict.Push(float64(result.Latency.Microseconds())); !within6Sigma && stddev > 0 && mean > 0 {
 		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v μs over six standard deviation %v μs and mean is %v μs",
@@ -283,7 +282,7 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 				clusterName, testName, result.Latency, float64(stddev/1000.0), float64(mean/1000.0))
 		}
 		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, false)
-		Alert(errMsg)
+		VerboseAlert(clusterName+"-latency-stddev", errMsg, 10*time.Minute)
 		// standard deviation does not generate alerts
 		// ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
 	} else {

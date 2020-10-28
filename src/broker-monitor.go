@@ -19,11 +19,11 @@ func EvaluateBrokers(prefixURL, token string) error {
 
 	if failedBrokers > 0 {
 		errMsg := fmt.Sprintf("cluster %s has %d unhealthy brokers, error message %v", name, failedBrokers, err)
-		Alert(errMsg)
+		VerboseAlert(name+"-broker", errMsg, 3*time.Minute)
 		ReportIncident(name, name, "brokers are unhealthy reported by pulsar-monitor", errMsg, &cfg.AlertPolicy)
 	} else if err != nil {
 		errMsg := fmt.Sprintf("cluster %s Pulsar brokers test failed, error message %v", name, err)
-		Alert(errMsg)
+		VerboseAlert(name+"-broker", errMsg, 3*time.Minute)
 	} else {
 		ClearIncident(name)
 	}

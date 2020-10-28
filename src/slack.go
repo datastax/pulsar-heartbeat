@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
+	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
 
 // SlackMessage is the message struct to be posted for Slack
@@ -16,6 +17,42 @@ type SlackMessage struct {
 	Text      string `json:"text"`
 	Username  string `json:"username"`
 	IconEmogi string `json:"icon_emogi"`
+}
+
+// AlertVerbosity contains attributes required to calculate whether verbose alert is required or not
+type AlertVerbosity struct {
+	lastAlertTime time.Time
+	silenceWindow time.Duration
+}
+
+// MustAlert returns whether the silence window has expired since the last alert.
+func (av *AlertVerbosity) MustAlert() bool {
+	if time.Since(av.lastAlertTime) > av.silenceWindow {
+		return true
+	}
+	return false
+}
+
+var componentsAlert = util.NewSycMap()
+
+// VerboseAlert is able to reduce the verbosity to Slack channel
+func VerboseAlert(component, message string, silenceWindow time.Duration) {
+	if GetConfig().SlackConfig.Verbose {
+		Alert(message)
+		return
+	}
+	lastAlertV := componentsAlert.Replace(component, AlertVerbosity{
+		lastAlertTime: time.Now(),
+		silenceWindow: silenceWindow,
+	})
+
+	if alert, ok := lastAlertV.(AlertVerbosity); ok {
+		if !alert.MustAlert() {
+			log.Errorf("Alert %s", message)
+			return
+		}
+	}
+	Alert(message)
 }
 
 // Alert alerts to slack, email, text.

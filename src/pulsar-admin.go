@@ -68,13 +68,13 @@ func PulsarTenants() {
 		tenantSize, err := PulsarAdminTenant(queryURL, token)
 		if err != nil {
 			errMsg := fmt.Sprintf("tenant-test failed on cluster %s error: %v", queryURL, err)
-			Alert(errMsg)
+			VerboseAlert(clusterName+"-pulsar-admin", errMsg, 3*time.Minute)
 			ReportIncident(cluster.Name, clusterName, "persisted cluster tenants test failure", errMsg, &cluster.AlertPolicy)
 		} else {
 			PromGaugeInt(TenantsGaugeOpt(), cluster.Name, tenantSize)
 			ClearIncident(cluster.Name)
 			if tenantSize == 0 {
-				Alert(fmt.Sprintf("%s has incorrect number of tenants 0", cluster.Name))
+				VerboseAlert(clusterName+"-pulsar-admin", fmt.Sprintf("%s has incorrect number of tenants 0", cluster.Name), 3*time.Minute)
 			} else {
 				log.Printf("cluster %s has %d numbers of tenants", clusterName, tenantSize)
 			}

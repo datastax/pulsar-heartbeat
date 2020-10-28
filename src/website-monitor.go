@@ -70,8 +70,8 @@ func mon(site SiteCfg) {
 	err := monitorSite(site)
 	if err != nil {
 		errMsg := fmt.Sprintf("site monitoring %s error: %v", site.URL, err)
-		title := fmt.Sprintf("persisted kafkaesque.io %s endpoint failure", site.Name)
-		Alert(errMsg)
+		title := fmt.Sprintf("persisted %s endpoint failure", site.Name)
+		VerboseAlert(site.Name+"-site-monitor", errMsg, 3*time.Minute)
 		ReportIncident(site.Name, site.Name, title, errMsg, &site.AlertPolicy)
 	} else {
 		ClearIncident(site.Name)

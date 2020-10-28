@@ -32,6 +32,8 @@ func UptimeHeartBeat() {
 // HeartBeatToOpsGenie send heart beat to ops genie
 func HeartBeatToOpsGenie(genieURL, genieKey string) error {
 
+	name := GetConfig().Name
+
 	client := retryablehttp.NewClient()
 	client.HTTPClient.Timeout = time.Duration(5) * time.Second
 	client.RetryWaitMin = 4 * time.Second
@@ -51,13 +53,13 @@ func HeartBeatToOpsGenie(genieURL, genieKey string) error {
 	}
 	if err != nil {
 		log.Println(err)
-		Alert(fmt.Sprintf("Opsgenie returns error %v", err))
+		Alert(fmt.Sprintf("from %s Opsgenie returns error %v", name, err))
 		return err
 	}
 
 	log.Print("opsgenie status code ", resp.StatusCode)
 	if resp.StatusCode > 300 {
-		msg := fmt.Sprintf("Opsgenie returns incorrect status code %d", resp.StatusCode)
+		msg := fmt.Sprintf("from %s Opsgenie returns incorrect status code %d", name, resp.StatusCode)
 		Alert(msg)
 		return errors.New(msg)
 	}

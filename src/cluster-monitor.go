@@ -9,11 +9,6 @@ import (
 	"github.com/kafkaesque-io/pulsar-monitor/src/k8s"
 )
 
-// K8s pulsar cluster monitor
-var (
-	lastAlertMessageTime time.Time = time.Now()
-)
-
 const clusterMonInterval = 10 * time.Second
 
 // ClusterHealth a cluster health struct
@@ -61,12 +56,8 @@ func EvaluateClusterHealth(client *k8s.Client) error {
 	if status.Status != k8s.OK {
 		errMsg := fmt.Sprintf("cluster %s, k8s pulsar cluster status is unhealthy, error message %s", cluster, desc)
 		if status.Status == k8s.TotalDown {
-			Alert(errMsg)
+			VerboseAlert(cluster, errMsg, 3*time.Minute)
 			ReportIncident(cluster, cluster, "kubernete cluster is down, reported by pulsar-monitor", errMsg, &cfg.AlertPolicy)
-		} else if time.Since(lastAlertMessageTime) > 1*time.Minute {
-			// tune down the alert verbosity at every minute
-			Alert(errMsg)
-			lastAlertMessageTime = time.Now()
 		}
 	} else {
 		ClearIncident(cluster)

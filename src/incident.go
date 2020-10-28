@@ -198,7 +198,7 @@ func CreateIncident(component, alias, msg, desc, priority string) {
 	genieKey := GetConfig().OpsGenieConfig.AlertKey
 	err := CreateOpsGenieAlert(NewIncident(component, alias, msg, desc, priority), genieKey)
 	if err != nil {
-		Alert(fmt.Sprintf("Opsgenie report incident error %v", err))
+		Alert(fmt.Sprintf("from %s Opsgenie report incident error %v", component, err))
 	}
 }
 
@@ -226,7 +226,7 @@ func RemoveIncident(component string) {
 		genieKey := GetConfig().OpsGenieConfig.AlertKey
 		err := CloseOpsGenieAlert(component, record.alertID, genieKey)
 		if err != nil {
-			Alert(fmt.Sprintf("Opsgenie remove incident error %v", err))
+			Alert(fmt.Sprintf("from %s Opsgenie remove incident error %v", component, err))
 		}
 	}
 }

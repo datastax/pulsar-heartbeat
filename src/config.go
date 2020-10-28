@@ -22,6 +22,7 @@ type PrometheusCfg struct {
 // SlackCfg is slack configuration
 type SlackCfg struct {
 	AlertURL string `json:"alertUrl"`
+	Verbose  bool   `json:"verbose"`
 }
 
 // OpsGenieCfg is opsGenie configuration

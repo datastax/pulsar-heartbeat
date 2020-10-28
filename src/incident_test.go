@@ -14,7 +14,7 @@ import (
 
 func TestUnmarshConfigFile(t *testing.T) {
 	ReadConfigFile("../config/runtime-template.json")
-	assert(t, ":8081" == GetConfig().PrometheusConfig.Port, "load json config")
+	assert(t, ":8083" == GetConfig().PrometheusConfig.Port, "load json config")
 	ReadConfigFile("../config/runtime-template.yml")
 	assert(t, ":8080" == GetConfig().PrometheusConfig.Port, "load yaml config")
 

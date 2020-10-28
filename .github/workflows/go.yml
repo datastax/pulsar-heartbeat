@@ -60,7 +60,10 @@ jobs:
         run: |
           cd src
           go vet ./...
-
+      - name: Go test
+        run: |
+          cd src
+          go test ./...
   docker:
     name: docker
     runs-on: ubuntu-latest 
