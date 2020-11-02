@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"time"
 	"unicode"
 
+	"github.com/apex/log"
 	"github.com/ghodss/yaml"
 )
 
@@ -134,6 +134,8 @@ type Configuration struct {
 	Name string `json:"name"`
 	// ClusterName is the Pulsar cluster name if the Name cannot be used as the Pulsar cluster name, optional
 	ClusterName string `json:"clusterName"`
+	// TokenFilePath is the file path to Pulsar JWT. It takes precedence of the token attribute.
+	TokenFilePath string `json:"tokenFilePath"`
 	// Token is a Pulsar JWT can be used for both client client or http admin client
 	Token             string             `json:"token"`
 	BrokersConfig     BrokersCfg         `json:"brokersConfig"`
@@ -167,7 +169,7 @@ func ReadConfigFile(configFile string) {
 
 	fileBytes, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		log.Printf("failed to load configuration file %s", configFile)
+		log.Errorf("failed to load configuration file %s", configFile)
 		panic(err)
 	}
 
@@ -187,7 +189,18 @@ func ReadConfigFile(configFile string) {
 		panic("a valid `name` in Configuration must be specified")
 	}
 
-	log.Println(Config)
+	// reconcile the JWT
+	if len(Config.TokenFilePath) > 1 {
+		tokenBytes, err := ioutil.ReadFile(Config.TokenFilePath)
+		if err != nil {
+			log.Errorf("failed to read Pulsar JWT from a file %s", Config.TokenFilePath)
+		} else {
+			log.Infof("read Pulsar token from the file %s", Config.TokenFilePath)
+			Config.Token = string(tokenBytes)
+		}
+	}
+
+	log.Infof("config %v", Config)
 }
 
 var jsonPrefix = []byte("{")

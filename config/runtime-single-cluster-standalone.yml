@@ -1,5 +1,6 @@
 ---
 name: remote-monitor-example
+tokenFilePath:
 token: eyJhbGciOiJSUzI1NiJ...[kesque pulsar JWT]
 slackConfig:
   alertUrl: https://hooks.slack.com/services/[slack alert app]
