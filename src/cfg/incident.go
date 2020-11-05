@@ -1,4 +1,4 @@
-package main
+package cfg
 
 import (
 	"bytes"
@@ -33,12 +33,14 @@ var (
 	// lock for incidents map
 	incidentsLock = &sync.RWMutex{}
 
-	// TODO: these two map are not thread safe.
+	// TODO: this map is not thread safe.
 	// track the downtime, since downtime won't be calculated when producing message works
 	// it has different defintion than incident
 	// this is only applicable when Pulsar Monitor is deployed within a Pulsar cluster
 	downtimeTracker = make(map[string]incidentRecord)
 
+	// tracks incident to determine whether real alerting is required
+	// key is the component name
 	incidentTrackers     = make(map[string]*IncidentAlertPolicy)
 	incidentTrackersLock = &sync.RWMutex{}
 )
@@ -49,12 +51,13 @@ const (
 
 // Incident is the struct for incident reporting
 type Incident struct {
-	Message     string   `json:"message"`
-	Description string   `json:"description"`
-	Priority    string   `json:"priority"`
-	Entity      string   `json:"entity"`
-	Alias       string   `json:"alias"`
-	Tags        []string `json:"tags"`
+	Message     string    `json:"message"`
+	Description string    `json:"description"`
+	Priority    string    `json:"priority"`
+	Entity      string    `json:"entity"`
+	Alias       string    `json:"alias"`
+	Tags        []string  `json:"tags"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // OpsGenieAlertCreateResponse is the response struct returned by OpsGenie
@@ -98,10 +101,12 @@ type IncidentAlertPolicy struct {
 	Alerts            map[time.Time]bool
 	LimitInWindow     int
 	Limit             int
+	LastUpdatedAt     time.Time
 }
 
 // return if alert is triggered
 func (t *IncidentAlertPolicy) report(component, msg, desc string) bool {
+	t.LastUpdatedAt = time.Now()
 	t.Entity = component
 	t.Counters = t.Counters + 1
 	t.Alerts[time.Now()] = true
@@ -141,6 +146,7 @@ func newPolicy(component, msg, desc string, eval *AlertPolicyCfg) IncidentAlertP
 	newTracker.Alerts = make(map[time.Time]bool)
 	newTracker.LimitInWindow = eval.CeilingInMovingWindow
 	newTracker.Limit = eval.Ceiling
+	newTracker.LastUpdatedAt = time.Now()
 	return newTracker
 }
 
@@ -161,6 +167,25 @@ func ReportIncident(component, alias, msg, desc string, eval *AlertPolicyCfg) {
 	if eval.Ceiling > 0 && trackIncident(component, msg, desc, eval) {
 		CreateIncident(component, alias, msg, desc, "P2")
 		AnalyticsReportIncident(component, alias, msg, desc)
+		return
+	}
+
+	count := 0
+	incidentTrackersLock.RLock()
+	// create an incident when multiple (3) components fails altogether near each other
+	// only run when this is a single in-cluster monitoring
+	if GetConfig().K8sConfig.Enabled && len(incidentTrackers) > 2 {
+		for _, v := range incidentTrackers {
+			if time.Since(v.LastUpdatedAt) < time.Minute {
+				count++
+			}
+		}
+	}
+	incidentTrackersLock.RUnlock()
+
+	if count > 2 {
+		CreateIncident(component, alias, msg, desc, "P2")
+		AnalyticsReportIncident(component, alias, msg+" reported by multiple monitor target failures", desc)
 	}
 }
 
@@ -190,6 +215,7 @@ func NewIncident(component, alias, msg, desc, priority string) Incident {
 		Entity:      component,
 		Alias:       alias,
 		Tags:        []string{"ops-monitor", component},
+		Timestamp:   time.Now(),
 	}
 }
 
@@ -242,7 +268,7 @@ func CalculateDowntime(component string) {
 
 func opsGenieHTTP(method, endpoint, genieKey string, payload *bytes.Buffer) (*http.Response, error) {
 	if genieKey == "" {
-		errStr := fmt.Sprintf("Alert creation failed. %s has not configured with genieKey.", Config.Name)
+		errStr := fmt.Sprintf("Alert creation failed. %s has not configured with genieKey.", GetConfig().Name)
 		Alert(errStr)
 		return nil, fmt.Errorf(errStr)
 	}

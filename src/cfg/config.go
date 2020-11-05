@@ -1,4 +1,4 @@
-package main
+package cfg
 
 import (
 	"bytes"
@@ -154,7 +154,7 @@ type Configuration struct {
 
 // AlertPolicyCfg is a set of criteria to evaluation triggers for incident alert
 type AlertPolicyCfg struct {
-	// first evalation for a single count
+	// first evaluation to count continuous failure
 	Ceiling int `json:"ceiling"`
 	// Second evaluation for moving window
 	MovingWindowSeconds   int `json:"movingWindowSeconds"`

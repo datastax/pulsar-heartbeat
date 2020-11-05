@@ -1,4 +1,4 @@
-package main
+package cfg
 
 import (
 	"context"
@@ -291,7 +291,9 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, true)
 		ClearIncident(clusterName)
 	}
-	PromLatencySum(GetGaugeType(topicCfg.Name), clusterName, result.Latency)
+	if result.Latency < failedLatency {
+		PromLatencySum(GetGaugeType(topicCfg.Name), clusterName, result.Latency)
+	}
 }
 
 func expectedMessage(payload, expected string) string {

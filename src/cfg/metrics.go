@@ -1,4 +1,4 @@
-package main
+package cfg
 
 import (
 	"bufio"
@@ -209,7 +209,7 @@ func GetOfflinePodsCounter(subsystem string) prometheus.GaugeOpts {
 
 // scrapeLocal scrapes the local metrics
 func scrapeLocal() ([]byte, error) {
-	url := "http://localhost" + Config.PrometheusConfig.Port + "/metrics"
+	url := "http://localhost" + GetConfig().PrometheusConfig.Port + "/metrics"
 	newRequest, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		log.Printf("make http request to scrape self's prometheus %s error %v", url, err)
@@ -281,19 +281,18 @@ func PushToPrometheusProxy(proxyURL, authKey string) error {
 		log.Printf("push to prometheus proxy %s error status code %v", proxyURL, resp.StatusCode)
 		return fmt.Errorf("push to prometheus proxy %s error status code %v", proxyURL, resp.StatusCode)
 	}
-	// log.Println("successfully pushed to prometheus proxy")
 
 	return nil
 }
 
 // PushToPrometheusProxyThread is the daemon thread that scrape and pushes metrics to prometheus proxy
 func PushToPrometheusProxyThread() {
-	cfg := GetConfig().PrometheusConfig
-	if cfg.PrometheusProxyURL == "" && cfg.ExposeMetrics {
+	promCfg := GetConfig().PrometheusConfig
+	if promCfg.PrometheusProxyURL == "" && promCfg.ExposeMetrics {
 		log.Println("This process is not configured to push metrics to prometheus proxy.")
 		return
 	}
-	proxyInstanceURL := cfg.PrometheusProxyURL + "/" + GetConfig().Name
+	proxyInstanceURL := promCfg.PrometheusProxyURL + "/" + GetConfig().Name
 
 	log.Printf("push to prometheus proxy url %s", GetConfig().PrometheusConfig.PrometheusProxyURL)
 	go func(url, apikey string) {
@@ -305,7 +304,7 @@ func PushToPrometheusProxyThread() {
 				PushToPrometheusProxy(url, apikey)
 			}
 		}
-	}(proxyInstanceURL, cfg.PrometheusProxyAPIKey)
+	}(proxyInstanceURL, promCfg.PrometheusProxyAPIKey)
 
 }
 

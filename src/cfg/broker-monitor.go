@@ -1,4 +1,4 @@
-package main
+package cfg
 
 import (
 	"fmt"
@@ -13,14 +13,14 @@ import (
 func EvaluateBrokers(prefixURL, token string) error {
 	name := GetConfig().Name + "-brokers" // again this is for in-cluster monitoring only
 
-	cfg := GetConfig().BrokersConfig
+	brokerCfg := GetConfig().BrokersConfig
 	clusterName := util.AssignString(GetConfig().ClusterName, GetConfig().Name)
 	failedBrokers, err := brokers.TestBrokers(prefixURL, clusterName, token)
 
 	if failedBrokers > 0 {
 		errMsg := fmt.Sprintf("cluster %s has %d unhealthy brokers, error message %v", name, failedBrokers, err)
 		VerboseAlert(name+"-broker", errMsg, 3*time.Minute)
-		ReportIncident(name, name, "brokers are unhealthy reported by pulsar-monitor", errMsg, &cfg.AlertPolicy)
+		ReportIncident(name, name, "brokers are unhealthy reported by pulsar-monitor", errMsg, &brokerCfg.AlertPolicy)
 	} else if err != nil {
 		errMsg := fmt.Sprintf("cluster %s Pulsar brokers test failed, error message %v", name, err)
 		VerboseAlert(name+"-broker", errMsg, 3*time.Minute)

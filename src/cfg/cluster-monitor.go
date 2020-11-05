@@ -1,4 +1,4 @@
-package main
+package cfg
 
 import (
 	"fmt"
@@ -18,6 +18,8 @@ type ClusterHealth struct {
 	MissingBrokers int
 }
 
+var clusterHealth = ClusterHealth{}
+
 // Get gets the cluster health status
 func (h *ClusterHealth) Get() (k8s.ClusterStatusCode, int) {
 	h.RLock()
@@ -35,7 +37,7 @@ func (h *ClusterHealth) Set(status k8s.ClusterStatusCode, offlineBrokers int) {
 
 // EvaluateClusterHealth evaluates and reports the k8s cluster health
 func EvaluateClusterHealth(client *k8s.Client) error {
-	cfg := GetConfig().K8sConfig
+	k8sCfg := GetConfig().K8sConfig
 	cluster := GetConfig().Name + "-in-cluster"
 	// again this is for in-cluster monitoring only
 
@@ -57,7 +59,7 @@ func EvaluateClusterHealth(client *k8s.Client) error {
 		errMsg := fmt.Sprintf("cluster %s, k8s pulsar cluster status is unhealthy, error message %s", cluster, desc)
 		if status.Status == k8s.TotalDown {
 			VerboseAlert(cluster, errMsg, 3*time.Minute)
-			ReportIncident(cluster, cluster, "kubernete cluster is down, reported by pulsar-monitor", errMsg, &cfg.AlertPolicy)
+			ReportIncident(cluster, cluster, "kubernete cluster is down, reported by pulsar-monitor", errMsg, &k8sCfg.AlertPolicy)
 		}
 	} else {
 		ClearIncident(cluster)
@@ -68,8 +70,8 @@ func EvaluateClusterHealth(client *k8s.Client) error {
 
 // MonitorK8sPulsarCluster start K8sPulsarClusterMonitor thread
 func MonitorK8sPulsarCluster() error {
-	cfg := GetConfig().K8sConfig
-	if !cfg.Enabled {
+	k8sCfg := GetConfig().K8sConfig
+	if !k8sCfg.Enabled {
 		return nil
 	}
 
