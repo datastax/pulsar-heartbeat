@@ -58,7 +58,7 @@ func NewPartitionTopic(url, token, trustStore, topicFn, adminURL string, numOfPa
 
 // GetPartitionTopic gets the partition topic
 func (pt *PartitionTopics) GetPartitionTopic() (bool, error) {
-	url := pt.BaseAdminURL + "/admin/v2/peristent/" + pt.Tenant + "/" + pt.Namespace + "/partitioned"
+	url := pt.BaseAdminURL + "/admin/v2/persistent/" + pt.Tenant + "/" + pt.Namespace + "/partitioned"
 
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -104,7 +104,7 @@ func (pt *PartitionTopics) GetPartitionTopic() (bool, error) {
 
 // CreatePartitionTopic creates a partition topic
 func (pt *PartitionTopics) CreatePartitionTopic() error {
-	url := pt.BaseAdminURL + "/admin/v2/peristent/" + pt.Tenant + "/" + pt.Namespace + "/" + pt.PartitionTopicName
+	url := pt.BaseAdminURL + "/admin/v2/persistent/" + pt.Tenant + "/" + pt.Namespace + "/" + pt.PartitionTopicName
 
 	byteInt := []byte(strconv.Itoa(pt.NumberOfPartitions))
 	request, err := http.NewRequest(http.MethodPut, url, bytes.NewReader(byteInt))

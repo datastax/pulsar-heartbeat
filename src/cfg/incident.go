@@ -35,7 +35,7 @@ var (
 
 	// TODO: this map is not thread safe.
 	// track the downtime, since downtime won't be calculated when producing message works
-	// it has different defintion than incident
+	// it has different definition than incident
 	// this is only applicable when Pulsar Monitor is deployed within a Pulsar cluster
 	downtimeTracker = make(map[string]incidentRecord)
 

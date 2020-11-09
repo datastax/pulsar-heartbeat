@@ -14,7 +14,7 @@
 
 all: push
 
-TAG ?= 1.2.8
+TAG ?= 1.2.91
 PREFIX ?= kesque/pulsar-monitor
 
 container:

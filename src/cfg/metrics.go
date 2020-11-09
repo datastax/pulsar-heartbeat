@@ -5,12 +5,12 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/apex/log"
 	"github.com/kafkaesque-io/pulsar-monitor/src/metering"
 	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 	"github.com/prometheus/client_golang/prometheus"
@@ -212,7 +212,7 @@ func scrapeLocal() ([]byte, error) {
 	url := "http://localhost" + GetConfig().PrometheusConfig.Port + "/metrics"
 	newRequest, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		log.Printf("make http request to scrape self's prometheus %s error %v", url, err)
+		log.Errorf("make http request to scrape self's prometheus %s error %v", url, err)
 		return []byte{}, err
 	}
 	client := &http.Client{}
@@ -221,18 +221,18 @@ func scrapeLocal() ([]byte, error) {
 		defer response.Body.Close()
 	}
 	if err != nil {
-		log.Printf("scrape self's prometheus %s error %v", url, err)
+		log.Errorf("scrape self's prometheus %s error %v", url, err)
 		return []byte{}, err
 	}
 
 	if response.StatusCode != http.StatusOK {
-		log.Printf("scrape self's prometheus %s response status code %d", url, response.StatusCode)
+		log.Errorf("scrape self's prometheus %s response status code %d", url, response.StatusCode)
 		return []byte{}, err
 	}
 
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Printf("scrape self's prometheus %s read response body error %v", url, err)
+		log.Errorf("scrape self's prometheus %s read response body error %v", url, err)
 		return []byte{}, err
 	}
 
@@ -259,7 +259,7 @@ func PushToPrometheusProxy(proxyURL, authKey string) error {
 
 	req, err := http.NewRequest("POST", proxyURL, bytes.NewBuffer(data))
 	if err != nil {
-		log.Printf("push to prometheus proxy %s error NewRe	uest request %v", proxyURL, err)
+		log.Errorf("push to prometheus proxy %s error NewRe	uest request %v", proxyURL, err)
 		return err
 	}
 
@@ -273,12 +273,12 @@ func PushToPrometheusProxy(proxyURL, authKey string) error {
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		log.Printf("push to prometheus proxy %s error reading request %v", proxyURL, err)
+		log.Errorf("push to prometheus proxy %s error reading request %v", proxyURL, err)
 		return err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("push to prometheus proxy %s error status code %v", proxyURL, resp.StatusCode)
+		log.Errorf("push to prometheus proxy %s error status code %v", proxyURL, resp.StatusCode)
 		return fmt.Errorf("push to prometheus proxy %s error status code %v", proxyURL, resp.StatusCode)
 	}
 
@@ -288,13 +288,13 @@ func PushToPrometheusProxy(proxyURL, authKey string) error {
 // PushToPrometheusProxyThread is the daemon thread that scrape and pushes metrics to prometheus proxy
 func PushToPrometheusProxyThread() {
 	promCfg := GetConfig().PrometheusConfig
-	if promCfg.PrometheusProxyURL == "" && promCfg.ExposeMetrics {
-		log.Println("This process is not configured to push metrics to prometheus proxy.")
+	if promCfg.PrometheusProxyURL == "" || !promCfg.ExposeMetrics {
+		log.Infof("This process is not configured to push metrics to prometheus proxy.")
 		return
 	}
 	proxyInstanceURL := promCfg.PrometheusProxyURL + "/" + GetConfig().Name
 
-	log.Printf("push to prometheus proxy url %s", GetConfig().PrometheusConfig.PrometheusProxyURL)
+	log.Infof("push to prometheus proxy url %s %t", GetConfig().PrometheusConfig.PrometheusProxyURL, promCfg.ExposeMetrics)
 	go func(url, apikey string) {
 		ticker := time.NewTicker(10 * time.Second)
 		PushToPrometheusProxy(url, apikey)
@@ -312,13 +312,13 @@ func PushToPrometheusProxyThread() {
 func BuildTenantsUsageThread() {
 	token := GetConfig().Token
 	if token == "" {
-		log.Printf("tenants usage exits since no token is specified")
+		log.Errorf("tenants usage exits since no token is specified")
 		return
 	}
 
 	prefixURL := GetConfig().BrokersConfig.InClusterRESTURL
 	if prefixURL == "" {
-		log.Printf("tenants usage exits since no in-cluster REST URL prefix is specified")
+		log.Errorf("tenants usage exits since no in-cluster REST URL prefix is specified")
 		return
 	}
 
@@ -326,7 +326,7 @@ func BuildTenantsUsageThread() {
 	tenantBytesOutAlertLimit := GetConfig().TenantUsageConfig.OutBytesLimit
 	interval := time.Duration(metering.SamplingIntervalInSeconds) * time.Second
 
-	log.Printf("build tenants uages from %s", prefixURL)
+	log.Infof("build tenants uages from %s", prefixURL)
 	go func(url, jwt, cluster string) {
 		ticker := time.NewTicker(interval)
 		usage := metering.NewTenantsUsage(url, jwt, cluster, tenantBytesOutAlertLimit)

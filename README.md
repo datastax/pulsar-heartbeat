@@ -1,4 +1,12 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/kafkaesque-io/pulsar-monitor)](https://goreportcard.com/report/github.com/kafkaesque-io/pulsar-monitor)
+[![CI Build](https://github.com/kafkaesque-io/pulsar-monitor/workflows/ci/badge.svg
+)](https://github.com/kafkaesque-io/pulsar-monitor/actions)
+[![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
+[![Docker image](https://shields.beevelop.com/docker/image/image-size/kesque/pulsar-monitor/0.22.svg?style=round-square)](https://hub.docker.com/r/kesque/pulsar-monitor/)
+[![LICENSE](https://img.shields.io/hexpm/l/pulsar.svg)](https://github.com/kafkaesque-io/pulsar-monitor/blob/master/LICENSE)
+
 # Operation Monitoring for Pulsar
+Pulsar Monitor is a devop tool monitor Pulser deployment operation.
 
 This is a ops monitoring tool to
 - [x] monitor Pulsar admin REST API endpoint
@@ -22,6 +30,20 @@ The configuration json file can be specified in the overwrite order of
 - an environment variable `PULSAR_OPS_MONITOR_CFG`
 - an command line argument `./pulsar-monitor -config /path/to/pulsar_ops_monitor_config.yml`
 - A default path to `../config/runtime.yml`
+
+## Observability
+
+| Name | Type | Description |
+|:------|:------:|:------------|
+| pulsar_pubsub_latency_ms | gauge | end to end message pub and sub latency in millieseconds |
+| pulsar_pubsub_latency_ms_hst | summary | end to end message latency histogram summary over 50%, 90%, and 99% samples |
+| pulsar_websocket_latency_ms | gauge | end to end message pub and sub latency over websocket interface in millieseconds |
+| pulsar_k8s_bookkeeper_offline_counter | gauge | bookkeeper offline instances in kubernets cluster |
+| pulsar_k8s_broker | gauge | broker offline instances in kubernets cluster |
+| pulsar_k8s_proxy_offline_counter | gauge | proxy offline instances in kubernets cluster |
+| pulsar_k8s_bookkeeper_zookeeper_counter | gauge | zookeeper offline instances in kubernets cluster |
+| pulsar_monitor_counter | counter | pulsar monitor heartbeat counter |
+| pulsar_tenant_size | gauge | the number of tenants that can be used as a health indicator of admin interface |
 
 ## In-cluster monitoring
 Pulsar monitor can be deployed within the same Pulsar Kubernetes cluster. Kubernetes' pod and service , and individual broker monitoring are only supported within the same Kubernetes cluster deployment.

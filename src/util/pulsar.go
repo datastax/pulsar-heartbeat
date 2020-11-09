@@ -34,7 +34,7 @@ func GetPulsarClient(pulsarURL, tokenStr, trustStore string) (pulsar.Client, err
 	if strings.HasPrefix(pulsarURL, "pulsar+ssl://") {
 		// trustStore := util.AssignString(GetConfig().TrustStore, "/etc/ssl/certs/ca-bundle.crt")
 		if trustStore == "" {
-			return nil, fmt.Errorf("this is fatal that we are missing trustStore while pulsar+ssl is required")
+			return nil, fmt.Errorf("fatal error: missing trustStore while pulsar+ssl tls is enabled")
 		}
 		clientOpt.TLSTrustCertsFilePath = trustStore
 	}

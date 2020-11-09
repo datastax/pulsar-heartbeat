@@ -3,11 +3,11 @@ package cfg
 import (
 	"encoding/base64"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/apex/log"
 	"github.com/gorilla/websocket"
 	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
@@ -71,7 +71,7 @@ func WsLatencyTest(producerURL, subscriptionURL, token string) (MsgResult, error
 	prodURL := tokenAsURLQueryParam(producerURL, token)
 	subsURL := tokenAsURLQueryParam(subscriptionURL, token)
 
-	// log.Printf("wss producer connection url %s\n\t\tconsumer url %s\n", prodURL, subsURL)
+	// log.Infof("wss producer connection url %s\n\t\tconsumer url %s\n", prodURL, subsURL)
 	prodConn, _, err := websocket.DefaultDialer.Dial(prodURL, wsHeaders)
 	if err != nil {
 		return MsgResult{Latency: failedLatency}, err
@@ -98,7 +98,7 @@ func WsLatencyTest(producerURL, subscriptionURL, token string) (MsgResult, error
 	go func(expectedMsg string) {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Printf("Recovered from websocket consumer listener panic %v \n", r)
+				log.Infof("Recovered from websocket consumer listener panic %v", r)
 			}
 		}()
 
@@ -106,20 +106,20 @@ func WsLatencyTest(producerURL, subscriptionURL, token string) (MsgResult, error
 			var msg ReceivingMessage
 			err := consConn.ReadJSON(&msg)
 			if err != nil {
-				log.Printf("ws consumer read error: %v\n", err)
+				log.Infof("ws consumer read error: %v", err)
 				errChan <- err
 				return
 			}
 			decoded, err := base64.StdEncoding.DecodeString(msg.Payload)
 			if err != nil {
-				log.Printf("ws consumer decode error: %v\n", err)
+				log.Infof("ws consumer decode error: %v", err)
 				errChan <- err
 				return
 			}
 			decodedStr := string(decoded)
 			actMsg := &AckMessage{MessageID: msg.MessageID}
 			if err = consConn.WriteJSON(actMsg); err != nil {
-				log.Printf("ws consumer failed to ack message %s\n", err.Error())
+				log.Infof("ws consumer failed to ack message %s", err.Error())
 				errChan <- err
 				return
 			}
@@ -135,11 +135,15 @@ func WsLatencyTest(producerURL, subscriptionURL, token string) (MsgResult, error
 	go func() {
 		_, rawBytes, err := prodConn.ReadMessage()
 		if err != nil {
-			log.Printf("websocket producer received benign error: %v\n", err)
+			log.Errorf("websocket producer received benign error: %v", err)
 			return
 		}
 		byteMessage, err := base64.StdEncoding.DecodeString(string(rawBytes))
-		log.Printf("websocket producer received response: %s", string(byteMessage))
+		if err != nil {
+			log.Errorf("decode producer response error: %v", err)
+			return
+		}
+		log.Infof("websocket producer received response: %s", string(byteMessage))
 	}()
 
 	encodedText := base64.StdEncoding.EncodeToString([]byte(messageText))
@@ -158,6 +162,7 @@ func WsLatencyTest(producerURL, subscriptionURL, token string) (MsgResult, error
 		case receivedTime := <-completeChan:
 			return MsgResult{Latency: receivedTime.Sub(sentTime)}, nil
 		case err := <-errChan:
+			log.Errorf("websocket error: %v", err)
 			return MsgResult{Latency: failedLatency}, err
 		case <-time.After(30 * time.Second):
 			return MsgResult{Latency: failedLatency}, fmt.Errorf("timed out without receiving the expect message")
@@ -189,7 +194,7 @@ func TestWsLatency(config WsConfig) {
 		ReportIncident(config.Name, config.Cluster, "websocket persisted latency test failure", errMsg, &config.AlertPolicy)
 
 	} else {
-		log.Printf("websocket pubsub succeeded with latency %v expected latency %v on topic %s, cluster %s\n",
+		log.Infof("websocket pubsub succeeded with latency %v expected latency %v on topic %s, cluster %s\n",
 			result.Latency, expectedLatency, config.TopicName, config.Cluster)
 		ClearIncident(config.Name)
 	}
@@ -200,7 +205,6 @@ func TestWsLatency(config WsConfig) {
 // WebSocketTopicLatencyTestThread tests a message websocket delivery in topic and measure the latency.
 func WebSocketTopicLatencyTestThread() {
 	configs := GetConfig().WebSocketConfig
-	log.Println(configs)
 
 	for _, cfg := range configs {
 		cfg.reconcileConfig()

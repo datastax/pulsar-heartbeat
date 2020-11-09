@@ -176,7 +176,7 @@ func sendEvent(eventType, userID, deviceID string, eventProp map[string]interfac
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, ingestURL, bytes.NewBuffer(data))
+	req, _ := http.NewRequest(http.MethodPost, ingestURL, bytes.NewBuffer(data))
 	req.Header = headers
 
 	client := &http.Client{}

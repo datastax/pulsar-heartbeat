@@ -49,7 +49,7 @@ func PubSubLatency(clusterName, tokenStr, uri, topicName, outputTopic, msgPrefix
 		if strings.HasPrefix(uri, "pulsar+ssl://") {
 			trustStore := util.AssignString(GetConfig().TrustStore, "/etc/ssl/certs/ca-bundle.crt")
 			if trustStore == "" {
-				panic("this is fatal that we are missing trustStore while pulsar+ssl is required")
+				return MsgResult{Latency: failedLatency}, fmt.Errorf("fatal error: missing trustStore while pulsar+ssl tls is enabled")
 			}
 			clientOpt.TLSTrustCertsFilePath = trustStore
 		}

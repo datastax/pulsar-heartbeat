@@ -64,6 +64,23 @@ jobs:
         run: |
           cd src
           go test ./...
+
+      - name: Run Test and Code Coverage
+        run: |
+          pwd
+          cd ./scripts
+          ./test_coverage.sh
+        env:
+          GOPATH: /home/runner/work/pulsar-monitor/go
+      - name: Upload Coverage
+        if: github.repository == 'kafkaesque-io/pulsar-monitor'
+        uses: codecov/codecov-action@v1.0.0
+        with :
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.txt
+          yml: ./.codecov.yml
+          fail_ci_fi_error: true
+          path: go/src/github.com/kafkaesque-io/pulsar-monitor
   docker:
     name: docker
     runs-on: ubuntu-latest 
