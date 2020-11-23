@@ -7,6 +7,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/kafkaesque-io/pulsar-monitor/src/k8s"
+	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
 
 const clusterMonInterval = 10 * time.Second
@@ -39,12 +40,13 @@ func (h *ClusterHealth) Set(status k8s.ClusterStatusCode, offlineBrokers int) {
 func EvaluateClusterHealth(client *k8s.Client) error {
 	k8sCfg := GetConfig().K8sConfig
 	cluster := GetConfig().Name + "-in-cluster"
+	ns := util.AssignString(k8sCfg.PulsarNamespace, k8s.DefaultPulsarNamespace)
 	// again this is for in-cluster monitoring only
 
-	if err := client.UpdateReplicas(); err != nil {
+	if err := client.UpdateReplicas(ns); err != nil {
 		return err
 	}
-	if err := client.WatchPods(k8s.DefaultPulsarNamespace); err != nil {
+	if err := client.WatchPods(ns); err != nil {
 		return err
 	}
 	desc, status := client.EvalHealth()
@@ -75,7 +77,8 @@ func MonitorK8sPulsarCluster() error {
 		return nil
 	}
 
-	clientset, err := k8s.GetK8sClient()
+	ns := util.AssignString(k8sCfg.PulsarNamespace, k8s.DefaultPulsarNamespace)
+	clientset, err := k8s.GetK8sClient(ns)
 	if err != nil {
 		log.Errorf("failed to get k8s clientset %v or get pods under pulsar namespace", err)
 		return err

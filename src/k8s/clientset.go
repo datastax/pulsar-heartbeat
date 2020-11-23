@@ -2,21 +2,17 @@ package k8s
 
 import (
 	"context"
-	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
-	"github.com/sirupsen/logrus"
+	log "github.com/apex/log"
 	apps_v1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/apps/v1"
 	batch_v1 "k8s.io/api/batch/v1"
 	core_v1 "k8s.io/api/core/v1"
 	ext_v1beta1 "k8s.io/api/extensions/v1beta1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -101,20 +97,20 @@ type StatefulSet struct {
 }
 
 // GetK8sClient gets k8s clientset
-func GetK8sClient() (*Client, error) {
+func GetK8sClient(pulsarNamespace string) (*Client, error) {
 	var config *rest.Config
 
 	if home := homedir.HomeDir(); home != "" {
 		// TODO: add configuration to allow customized config file
 		kubeconfig := filepath.Join(home, ".kube", "config")
 		if _, err := os.Stat(kubeconfig); os.IsNotExist(err) {
-			log.Println("this is an in-cluster k8s monitor")
+			log.Infof("this is an in-cluster k8s monitor, pulsar namespace %s", pulsarNamespace)
 			if config, err = rest.InClusterConfig(); err != nil {
 				return nil, err
 			}
 
 		} else {
-			log.Printf("this is outside of k8s cluster monitor, kubeconfig dir %s", kubeconfig)
+			log.Infof("this is outside of k8s cluster monitor, kubeconfig dir %s, pulsar namespace %s", kubeconfig, pulsarNamespace)
 			if config, err = clientcmd.BuildConfigFromFlags("", kubeconfig); err != nil {
 				return nil, err
 			}
@@ -136,7 +132,7 @@ func GetK8sClient() (*Client, error) {
 		Metrics:   metrics,
 	}
 
-	err = client.UpdateReplicas()
+	err = client.UpdateReplicas(pulsarNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -146,20 +142,20 @@ func GetK8sClient() (*Client, error) {
 func buildInClusterConfig() kubernetes.Interface {
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		logrus.Fatalf("Can not get kubernetes config: %v", err)
+		log.Fatalf("Can not get kubernetes config: %v", err)
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		logrus.Fatalf("Can not create kubernetes client: %v", err)
+		log.Fatalf("Can not create kubernetes client: %v", err)
 	}
 
 	return clientset
 }
 
 // UpdateReplicas updates the replicas for deployments and sts
-func (c *Client) UpdateReplicas() error {
-	brokersts, err := c.getStatefulSets(DefaultPulsarNamespace, BrokerSts)
+func (c *Client) UpdateReplicas(namespace string) error {
+	brokersts, err := c.getStatefulSets(namespace, BrokerSts)
 	if err != nil {
 		return err
 	}
@@ -169,7 +165,7 @@ func (c *Client) UpdateReplicas() error {
 		c.BrokerSts.Replicas = *(brokersts.Items[0]).Spec.Replicas
 	}
 
-	broker, err := c.getDeployments(DefaultPulsarNamespace, BrokerDeployment)
+	broker, err := c.getDeployments(namespace, BrokerDeployment)
 	if err != nil {
 		return err
 	}
@@ -179,19 +175,23 @@ func (c *Client) UpdateReplicas() error {
 		c.Broker.Replicas = *(broker.Items[0]).Spec.Replicas
 	}
 
-	proxy, err := c.getDeployments(DefaultPulsarNamespace, ProxyDeployment)
+	proxy, err := c.getDeployments(namespace, ProxyDeployment)
 	if err != nil {
 		return err
 	}
-	c.Proxy.Replicas = *(proxy.Items[0]).Spec.Replicas
+	if len(proxy.Items) == 0 {
+		c.Proxy.Replicas = 0
+	} else {
+		c.Proxy.Replicas = *(proxy.Items[0]).Spec.Replicas
+	}
 
-	zk, err := c.getStatefulSets(DefaultPulsarNamespace, ZookeeperSts)
+	zk, err := c.getStatefulSets(namespace, ZookeeperSts)
 	if err != nil {
 		return err
 	}
 	c.Zookeeper.Replicas = *(zk.Items[0]).Spec.Replicas
 
-	bk, err := c.getStatefulSets(DefaultPulsarNamespace, BookkeeperSts)
+	bk, err := c.getStatefulSets(namespace, BookkeeperSts)
 	if err != nil {
 		return err
 	}
@@ -231,10 +231,12 @@ func (c *Client) WatchPods(namespace string) error {
 		}
 	}
 
-	if counts, err := c.runningPodCounts(namespace, "proxy"); err == nil {
-		c.Proxy.Instances = int32(counts)
-	} else {
-		return err
+	if c.Proxy.Replicas > 0 {
+		if counts, err := c.runningPodCounts(namespace, "proxy"); err == nil {
+			c.Proxy.Instances = int32(counts)
+		} else {
+			return err
+		}
 	}
 	return nil
 }
@@ -274,7 +276,7 @@ func (c *Client) EvalHealth() (string, ClusterStatus) {
 		status.Status = updateStatus(status.Status, PartialReady)
 	}
 
-	if c.BrokerSts.Instances == 0 && c.BrokerSts.Replicas > 0 {
+	if c.BrokerSts.Replicas > 0 && c.BrokerSts.Instances == 0 {
 		health = health + fmt.Sprintf("\nCluster error - broker stateful has no running instances out of %d replicas", c.Broker.Replicas)
 		status.Status = TotalDown
 	} else if status.BrokerStsOfflineInstances > 0 {
@@ -282,10 +284,10 @@ func (c *Client) EvalHealth() (string, ClusterStatus) {
 		status.Status = TotalDown
 	}
 
-	if c.Proxy.Instances == 0 {
+	if c.Proxy.Replicas > 0 && c.Proxy.Instances == 0 {
 		health = health + fmt.Sprintf("\nCluster error - proxy has no running instances out of %d replicas", c.Proxy.Replicas)
 		status.Status = TotalDown
-	} else if c.Proxy.Instances < c.Proxy.Replicas {
+	} else if c.Proxy.Replicas > 0 && c.Proxy.Instances < c.Proxy.Replicas {
 		health = health + fmt.Sprintf("\nCluster warning - proxy is running %d instances out of %d", c.Proxy.Instances, c.Proxy.Replicas)
 		status.Status = updateStatus(status.Status, PartialReady)
 	}
@@ -384,76 +386,6 @@ func (c *Client) getStatefulSets(namespace, component string) (*v1.StatefulSetLi
 	return stsClient.List(context.TODO(), meta_v1.ListOptions{
 		LabelSelector: fmt.Sprintf("component=%s", component),
 	})
-}
-
-// WatchPVC watches any pvc changes
-func (c *Client) WatchPVC(namespace, component, maxClaim string) error {
-	// maxClaim 2000Gi
-	// loop through events
-	var maxClaims string
-	flag.StringVar(&maxClaims, "max-claims", maxClaim,
-		"Maximum total claims to watch")
-	var totalClaimedQuant resource.Quantity
-	maxClaimedQuant := resource.MustParse(maxClaims)
-
-	// watch future changes to PVCs
-	watcher, err := c.Clientset.CoreV1().PersistentVolumeClaims(namespace).Watch(context.TODO(), meta_v1.ListOptions{
-		LabelSelector: fmt.Sprintf("component=%s", component),
-	})
-	if err != nil {
-		return err
-	}
-	ch := watcher.ResultChan()
-
-	fmt.Printf("--- PVC Watch (max claims %v) ----\n", maxClaimedQuant.String())
-	for event := range ch {
-		pvc, ok := event.Object.(*core_v1.PersistentVolumeClaim)
-		if !ok {
-			return fmt.Errorf("*core_v1.PersistentVolumeClaim unexpected event type")
-		}
-		quant := pvc.Spec.Resources.Requests[core_v1.ResourceStorage]
-
-		switch event.Type {
-		case watch.Added:
-			totalClaimedQuant.Add(quant)
-			log.Printf("PVC %s added, claim size %s\n", pvc.Name, quant.String())
-
-			// is claim overage?
-			if totalClaimedQuant.Cmp(maxClaimedQuant) == 1 {
-				log.Printf("\nClaim overage reached: max %s at %s",
-					maxClaimedQuant.String(),
-					totalClaimedQuant.String(),
-				)
-				// trigger action
-				log.Println("trigger action")
-			}
-
-		case watch.Modified:
-			//log.Printf("Pod %s modified\n", pod.GetName())
-		case watch.Deleted:
-			quant := pvc.Spec.Resources.Requests[core_v1.ResourceStorage]
-			totalClaimedQuant.Sub(quant)
-			log.Printf("PVC %s removed, size %s\n", pvc.Name, quant.String())
-
-			if totalClaimedQuant.Cmp(maxClaimedQuant) <= 0 {
-				log.Printf("Claim usage normal: max %s at %s",
-					maxClaimedQuant.String(),
-					totalClaimedQuant.String(),
-				)
-				// trigger action
-				log.Println("*** Taking action ***")
-			}
-		case watch.Error:
-			//log.Printf("watcher error encountered\n", pod.GetName())
-		}
-
-		log.Printf("\nAt %3.1f%% claim capcity (%s/%s)\n",
-			float64(totalClaimedQuant.Value())/float64(maxClaimedQuant.Value())*100,
-			totalClaimedQuant.String(),
-			maxClaimedQuant.String(),
-		)
-	}
-	return nil
 }
 
 // GetObjectMetaData returns metadata of a given k8s object

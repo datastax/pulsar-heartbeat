@@ -12,9 +12,8 @@ import (
 	"time"
 
 	"github.com/apache/pulsar-client-go/pulsar"
+	log "github.com/apex/log"
 	"github.com/kafkaesque-io/pulsar-monitor/src/util"
-	"github.com/prometheus/common/log"
-	logrus "github.com/sirupsen/logrus"
 )
 
 // partition topics can be used to test availabilities of all PartitionTopic
@@ -30,7 +29,7 @@ type PartitionTopics struct {
 	PartitionTopicName string
 	TopicFullname      string
 	BaseAdminURL       string
-	log                *logrus.Entry
+	log                *log.Entry
 }
 
 // NewPartitionTopic creates a PartitionTopic test object
@@ -52,7 +51,7 @@ func NewPartitionTopic(url, token, trustStore, topicFn, adminURL string, numOfPa
 		PartitionTopicName: topic,
 		TopicFullname:      topicFn,
 		BaseAdminURL:       adminURL,
-		log:                logrus.WithFields(logrus.Fields{"app": "partition topic test"}),
+		log:                log.WithFields(log.Fields{"app": "partition topic test"}),
 	}, nil
 }
 

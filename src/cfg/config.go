@@ -114,9 +114,10 @@ type WsConfig struct {
 // K8sClusterCfg is configuration to monitor kubernete cluster
 // only to be enabled in-cluster monitoring
 type K8sClusterCfg struct {
-	Enabled       bool           `json:"enabled"`
-	KubeConfigDir string         `json:"kubeConfigDir"`
-	AlertPolicy   AlertPolicyCfg `json:"AlertPolicy"`
+	Enabled         bool           `json:"enabled"`
+	PulsarNamespace string         `json:"pulsarNamespace"`
+	KubeConfigDir   string         `json:"kubeConfigDir"`
+	AlertPolicy     AlertPolicyCfg `json:"AlertPolicy"`
 }
 
 // BrokersCfg monitors all brokers in the cluster
