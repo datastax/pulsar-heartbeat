@@ -85,6 +85,7 @@ type TopicCfg struct {
 	NumberOfPartitions int            `json:"numberOfPartitions"`
 	LatencyBudgetMs    int            `json:"latencyBudgetMs"`
 	PulsarURL          string         `json:"pulsarUrl"`
+	AdminURL           string         `json:"adminUrl"`
 	TopicName          string         `json:"topicName"`
 	OutputTopic        string         `json:"outputTopic"`
 	IntervalSeconds    int            `json:"intervalSeconds"`

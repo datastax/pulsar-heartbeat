@@ -1,7 +1,6 @@
 package topic
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -9,10 +8,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/apache/pulsar-client-go/pulsar"
-	log "github.com/apex/log"
+	"github.com/apex/log"
 	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
 
@@ -92,25 +92,27 @@ func (pt *PartitionTopics) GetPartitionTopic() (bool, error) {
 	}
 	expectedTopic := "persistent://" + pt.Tenant + "/" + pt.Namespace + "/" + pt.PartitionTopicName
 	found := false
+	pt.log.Debugf("all partition topics %v, expected topic %s", partitionTopic, expectedTopic)
 	for _, v := range partitionTopic {
 		if expectedTopic == v {
 			found = true
 		}
 	}
-
 	return found, nil
 }
 
 // CreatePartitionTopic creates a partition topic
 func (pt *PartitionTopics) CreatePartitionTopic() error {
-	url := pt.BaseAdminURL + "/admin/v2/persistent/" + pt.Tenant + "/" + pt.Namespace + "/" + pt.PartitionTopicName
+	url := pt.BaseAdminURL + "/admin/v2/persistent/" + pt.Tenant + "/" + pt.Namespace + "/" + pt.PartitionTopicName + "/partitions"
+	pt.log.Infof("create partition topic URL %s", url)
 
-	byteInt := []byte(strconv.Itoa(pt.NumberOfPartitions))
-	request, err := http.NewRequest(http.MethodPut, url, bytes.NewReader(byteInt))
+	payload := strings.NewReader(strconv.Itoa(pt.NumberOfPartitions))
+	request, err := http.NewRequest(http.MethodPut, url, payload)
 	if err != nil {
 		return nil
 	}
 
+	request.Header.Add("Content-Type", "text/plain")
 	request.Header.Add("Authorization", "Bearer "+pt.Token)
 	client := &http.Client{}
 	response, err := client.Do(request)
@@ -118,42 +120,42 @@ func (pt *PartitionTopics) CreatePartitionTopic() error {
 		defer response.Body.Close()
 	}
 	if err != nil {
-		pt.log.Errorf("GET PartitionTopic %s error %v", url, err)
+		pt.log.Errorf("CREATE PartitionTopic %s error %v", url, err)
 		return err
 	}
 
-	if response.StatusCode != http.StatusOK {
-		pt.log.Errorf("GET PartitionTopic %s response status code %d", url, response.StatusCode)
+	if response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusConflict {
+		pt.log.Errorf("CREATE PartitionTopic %s response status code %d", url, response.StatusCode)
 		return err
 	}
 
+	pt.log.Infof("partition topic %s created %d, statusCode %d", pt.PartitionTopicName, pt.NumberOfPartitions, response.StatusCode)
 	return nil
 }
 
+// VerifyPartitionTopic verifies existence of the partition topic
+// it creates one if it's missing
+func (pt *PartitionTopics) VerifyPartitionTopic() error {
+	created, err := pt.GetPartitionTopic()
+	if err != nil {
+		return err
+	}
+	if created {
+		pt.log.Infof("partitioned topic %s already exists", pt.TopicFullname)
+		return nil
+	}
+
+	return pt.CreatePartitionTopic()
+}
+
 // TestPartitionTopic sends multiple messages and to be verified by multiple consumers
-func (pt *PartitionTopics) TestPartitionTopic() (time.Duration, error) {
+func (pt *PartitionTopics) TestPartitionTopic(client pulsar.Client) (time.Duration, error) {
 
 	// notify the main thread with the latency to complete the exit of all consumers
 	completeChan := make(chan *util.ConsumerResult, pt.NumberOfPartitions)
+	defer close(completeChan)
 
 	partitionTopicSuffix := "-partition-"
-
-	client, err := util.GetPulsarClient(pt.PulsarURL, pt.Token, pt.TrustStore)
-	if err != nil {
-		return 0, err
-	}
-	defer client.Close()
-
-	pt.log.Infof("create a topic producer %s", pt.TopicFullname)
-	// create a pulsar producer
-	producer, err := client.CreateProducer(pulsar.ProducerOptions{
-		Topic: pt.TopicFullname,
-	})
-	if err != nil {
-		return 0, err
-	}
-	defer producer.Close()
-
 	// prepare the message
 	message := fmt.Sprintf("partition topic test message %v", time.Now())
 
@@ -163,6 +165,20 @@ func (pt *PartitionTopics) TestPartitionTopic() (time.Duration, error) {
 		pt.log.Infof("subscribe to partition topic %s wait on message %s", topicName, message)
 		go util.VerifyMessageByPulsarConsumer(client, topicName, message, completeChan)
 	}
+
+	pt.log.Infof("create a topic producer %s", pt.TopicFullname)
+	// create a pulsar producer
+	producer, err := client.CreateProducer(pulsar.ProducerOptions{
+		Topic:           pt.TopicFullname,
+		DisableBatching: true,
+	})
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		producer.Close()
+		log.Infof("closeeee producer name %s against topic name %s", producer.Name(), producer.Topic())
+	}()
 
 	// producer sends multiple messages
 	start := time.Now()
@@ -176,21 +192,23 @@ func (pt *PartitionTopics) TestPartitionTopic() (time.Duration, error) {
 		}
 
 		// Attempt to send message asynchronously and handle the response
-		if _, err := producer.Send(ctx, &msg); err != nil {
-			log.Errorf("failed to send message over partition topic , error: %v", err)
-			errMsg := fmt.Sprintf("fail to instantiate Pulsar client: %v", err)
-			// report error and exit
-			completeChan <- &util.ConsumerResult{
-				Err: errors.New(errMsg),
+		producer.SendAsync(ctx, &msg, func(messageId pulsar.MessageID, msg *pulsar.ProducerMessage, err error) {
+			if err != nil {
+				log.Errorf("failed to send message over partition topic , error: %v", err)
+				errMsg := fmt.Sprintf("fail to instantiate Pulsar client: %v", err)
+				// report error and exit
+				completeChan <- &util.ConsumerResult{
+					Err: errors.New(errMsg),
+				}
+			} else {
+				log.Infof("successfully published message on topic %s ", pt.TopicFullname)
 			}
-		}
-
-		log.Infof("successfully published message on topic %s ", pt.TopicFullname)
+		})
 	}
 
 	receivedCounter := 0
 	successfulCounter := 0
-	ticker := time.NewTicker(90 * time.Second)
+	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
 	for receivedCounter < pt.NumberOfPartitions {
 		select {
@@ -205,12 +223,13 @@ func (pt *PartitionTopics) TestPartitionTopic() (time.Duration, error) {
 			} else {
 				log.Errorf("topic %s failed to receive expected messages", pt.TopicFullname)
 			}
-			if receivedCounter >= pt.NumberOfPartitions {
+			if successfulCounter >= pt.NumberOfPartitions {
 				return time.Since(start), nil
 			}
 		case <-ticker.C:
-			return 0, fmt.Errorf("timed out to receive message %d out of %d partition topics", receivedCounter, pt.NumberOfPartitions)
+			return 0, fmt.Errorf("received %d msg with %d successful delivery but timed out to receive all %d messages",
+				receivedCounter, successfulCounter, pt.NumberOfPartitions)
 		}
 	}
-	return 0, nil
+	return 0, fmt.Errorf("received %d out of %d messages", successfulCounter, pt.NumberOfPartitions)
 }
