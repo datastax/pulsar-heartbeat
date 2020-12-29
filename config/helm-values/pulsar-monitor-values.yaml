@@ -1,8 +1,8 @@
 replicaCount: 1
 
 image:
-  repository: kesque/pulsar-monitor
-  tag: 1.1.1
+  repository: datastax/pulsar-monitor
+  tag: latest
   pullPolicy: IfNotPresent
 
 pulsarmonitor:
@@ -13,7 +13,7 @@ config:
   name: monitor-useast1-gcp-latency
   k8sInClusterMonitorEnabled: "false"
   alertUrl: https://hooks.slack.com/services/[slack app webhook]
-  pulsarClientToken: eyJhbGciOiJSUzI1...[kesque pulsar JWT]
+  pulsarClientToken: eyJhbGciOiJSUzI1...[pulsar JWT]
 
 
 #

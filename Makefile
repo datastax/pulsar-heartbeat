@@ -15,7 +15,7 @@
 all: push
 
 TAG ?= 0.0.1
-PREFIX ?= kesque/pulsar-monitor
+PREFIX ?= datastax/pulsar-monitor
 
 container:
 	docker build -t $(PREFIX):$(TAG) .

@@ -3,7 +3,7 @@
 )](https://github.com/datastax/pulsar-monitor/actions)
 [![codecov](https://codecov.io/gh/datastax/pulsar-monitor/branch/master/graph/badge.svg)](https://codecov.io/gh/datastax/pulsar-monitor)
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
-[![Docker image](https://img.shields.io/docker/image-size/kesque/pulsar-monitor)](https://hub.docker.com/r/kesque/pulsar-monitor/)
+[![Docker image](https://img.shields.io/docker/image-size/datastax/pulsar-monitor)](https://hub.docker.com/r/datastax/pulsar-monitor/)
 [![LICENSE](https://img.shields.io/hexpm/l/pulsar.svg)](https://github.com/datastax/pulsar-monitor/blob/master/LICENSE)
 
 # Operation Monitoring for Pulsar Cluster
@@ -56,7 +56,7 @@ Pulsar monitor can be deployed within the same Pulsar Kubernetes cluster. Kubern
 
 
 ## Docker
-Pulsar Monitor's official docker image can be pulled [here](https://hub.docker.com/repository/docker/kesque/pulsar-monitor)
+Pulsar Monitor's official docker image can be pulled [here](https://hub.docker.com/repository/docker/datastax/pulsar-monitor)
 
 ### Docker compose
 `./config/runtime.yml` or `./config/runtime.json` must have a Pulsar jwt and configured properly.
@@ -76,7 +76,7 @@ $ make
 Run docker container with Pulsar CA certificate and expose Prometheus metrics for collection.
 
 ``` bash
-$ docker run -d -it -v $HOME/go/src/github.com/datastax/pulsar-monitor/config/runtime.yml:/config/runtime.yml -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-bundle.crt -p 8080:8080 --name=pulsar-monitor kesque/pulsar-monitor:1.2.91
+$ docker run -d -it -v $HOME/go/src/github.com/datastax/pulsar-monitor/config/runtime.yml:/config/runtime.yml -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-bundle.crt -p 8080:8080 --name=pulsar-monitor datastax/pulsar-monitor:latest
 ```
 
 ## Helm chart
