@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/apex/log"
+	"github.com/datastax/pulsar-monitor/src/cfg"
+	"github.com/datastax/pulsar-monitor/src/util"
 	"github.com/google/gops/agent"
-	"github.com/kafkaesque-io/pulsar-monitor/src/cfg"
-	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 

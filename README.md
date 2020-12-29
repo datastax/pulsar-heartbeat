@@ -1,10 +1,10 @@
-[![Go Report Card](https://goreportcard.com/badge/github.com/kafkaesque-io/pulsar-monitor)](https://goreportcard.com/report/github.com/kafkaesque-io/pulsar-monitor)
-[![CI Build](https://github.com/kafkaesque-io/pulsar-monitor/workflows/ci/badge.svg
-)](https://github.com/kafkaesque-io/pulsar-monitor/actions)
-[![codecov](https://codecov.io/gh/kafkaesque-io/pulsar-monitor/branch/master/graph/badge.svg)](https://codecov.io/gh/kafkaesque-io/pulsar-monitor)
+[![Go Report Card](https://goreportcard.com/badge/github.com/datastax/pulsar-monitor)](https://goreportcard.com/report/github.com/datastax/pulsar-monitor)
+[![CI Build](https://github.com/datastax/pulsar-monitor/workflows/ci/badge.svg
+)](https://github.com/datastax/pulsar-monitor/actions)
+[![codecov](https://codecov.io/gh/datastax/pulsar-monitor/branch/master/graph/badge.svg)](https://codecov.io/gh/datastax/pulsar-monitor)
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
 [![Docker image](https://img.shields.io/docker/image-size/kesque/pulsar-monitor)](https://hub.docker.com/r/kesque/pulsar-monitor/)
-[![LICENSE](https://img.shields.io/hexpm/l/pulsar.svg)](https://github.com/kafkaesque-io/pulsar-monitor/blob/master/LICENSE)
+[![LICENSE](https://img.shields.io/hexpm/l/pulsar.svg)](https://github.com/datastax/pulsar-monitor/blob/master/LICENSE)
 
 # Operation Monitoring for Pulsar Cluster
 Pulsar Monitor monitors the availability, tracks the performance, and reports failures of the Pulsar cluster. It produces synthetic workloads to measure end-to-end message pubsub latency.
@@ -76,13 +76,13 @@ $ make
 Run docker container with Pulsar CA certificate and expose Prometheus metrics for collection.
 
 ``` bash
-$ docker run -d -it -v $HOME/go/src/github.com/kafkaesque-io/pulsar-monitor/config/runtime.yml:/config/runtime.yml -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-bundle.crt -p 8080:8080 --name=pulsar-monitor kesque/pulsar-monitor:1.2.91
+$ docker run -d -it -v $HOME/go/src/github.com/datastax/pulsar-monitor/config/runtime.yml:/config/runtime.yml -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-bundle.crt -p 8080:8080 --name=pulsar-monitor kesque/pulsar-monitor:1.2.91
 ```
 
 ## Helm chart
 
 ### Install as an individual deployment using helm
-Pulsar Monitor can be installed by this [helm chart](https://github.com/kafkaesque-io/pulsar-helm-chart/tree/master/helm-chart-sources/pulsar-monitor)
+Pulsar Monitor can be installed by this [helm chart](https://github.com/datastax/pulsar-helm-chart/tree/master/helm-chart-sources/pulsar-monitor)
 With this chart, it can monitor mutliple remote Pulsar clusters or co-reside on the same Pulsar cluster.
 
 Helm 3
@@ -97,7 +97,7 @@ helm install kafkaesque/pulsar --name pulsar-monitor --namespace monitoring --va
 
 ### Install as part of Kesque Pulsar cluster using helm
 
-Pulsar Monitor can be directly enabled inside [the Kesque's Pulsar chart](https://github.com/kafkaesque-io/pulsar-helm-chart/blob/master/helm-chart-sources/pulsar/values.yaml#L1571)
+Pulsar Monitor can be directly enabled inside [the Kesque's Pulsar chart](https://github.com/datastax/pulsar-helm-chart/blob/master/helm-chart-sources/pulsar/values.yaml#L1571)
 
 
 ## Development

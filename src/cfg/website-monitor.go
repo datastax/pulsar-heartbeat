@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/antonmedv/expr"
+	"github.com/datastax/pulsar-monitor/src/util"
 	"github.com/hashicorp/go-retryablehttp"
-	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
 
 func monitorSite(site SiteCfg) error {

@@ -2,7 +2,7 @@ version: '3'
 
 services:
   pulsar-monitor:
-    image: 'kafkaesqueio/pulsar-monitor:1.0.5'
+    image: 'datastax/pulsar-monitor:0.0.1'
     ports:
       - '8080:8080'
     volumes:

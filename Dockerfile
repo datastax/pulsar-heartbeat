@@ -2,7 +2,7 @@
 
 #
 # build stage
-#a
+#
 FROM golang:alpine AS builder
 
 # Add Maintainer Info

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kafkaesque-io/pulsar-monitor/src/util"
+	"github.com/datastax/pulsar-monitor/src/util"
 )
 
 // manage the payload size of Pulsar message

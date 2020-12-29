@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/apex/log"
+	"github.com/datastax/pulsar-monitor/src/util"
 	"github.com/hashicorp/go-retryablehttp"
-	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
 
 // report incident which usually is high level of escalation and paging

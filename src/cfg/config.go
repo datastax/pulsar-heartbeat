@@ -9,7 +9,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/kafkaesque-io/pulsar-monitor/src/util"
+	"github.com/datastax/pulsar-monitor/src/util"
 
 	"github.com/apex/log"
 	"github.com/ghodss/yaml"

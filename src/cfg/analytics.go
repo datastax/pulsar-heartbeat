@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/kafkaesque-io/pulsar-monitor/src/util"
+	"github.com/datastax/pulsar-monitor/src/util"
 	insights "github.com/newrelic/go-insights/client"
 )
 

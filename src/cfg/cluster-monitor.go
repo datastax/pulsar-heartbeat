@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/kafkaesque-io/pulsar-monitor/src/k8s"
-	"github.com/kafkaesque-io/pulsar-monitor/src/util"
+	"github.com/datastax/pulsar-monitor/src/k8s"
+	"github.com/datastax/pulsar-monitor/src/util"
 )
 
 const clusterMonInterval = 10 * time.Second
