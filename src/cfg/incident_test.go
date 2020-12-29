@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kafkaesque-io/pulsar-monitor/src/util"
+	"github.com/datastax/pulsar-monitor/src/util"
 )
 
 func TestUnmarshConfigFile(t *testing.T) {

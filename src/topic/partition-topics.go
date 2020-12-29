@@ -13,7 +13,7 @@ import (
 
 	"github.com/apache/pulsar-client-go/pulsar"
 	"github.com/apex/log"
-	"github.com/kafkaesque-io/pulsar-monitor/src/util"
+	"github.com/datastax/pulsar-monitor/src/util"
 )
 
 // partition topics can be used to test availabilities of all PartitionTopic

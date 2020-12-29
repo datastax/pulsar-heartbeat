@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/kafkaesque-io/pulsar-monitor/src/brokers"
-	"github.com/kafkaesque-io/pulsar-monitor/src/util"
+	"github.com/datastax/pulsar-monitor/src/brokers"
+	"github.com/datastax/pulsar-monitor/src/util"
 )
 
 // EvaluateBrokers evaluates and reports all brokers health

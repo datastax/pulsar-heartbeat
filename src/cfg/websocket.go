@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/apex/log"
+	"github.com/datastax/pulsar-monitor/src/util"
 	"github.com/gorilla/websocket"
-	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
 
 // PulsarMessage is the required message format for Pulsar Websocket message

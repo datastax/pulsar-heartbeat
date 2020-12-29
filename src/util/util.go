@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kafkaesque-io/pulsar-monitor/src/stats"
+	"github.com/datastax/pulsar-monitor/src/stats"
 )
 
 var (

@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/datastax/pulsar-monitor/src/util"
 	"github.com/hashicorp/go-retryablehttp"
-	"github.com/kafkaesque-io/pulsar-monitor/src/util"
 )
 
 // PulsarAdminTenant probes the tenant endpoint to get a list of tenants

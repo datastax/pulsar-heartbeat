@@ -1,6 +1,6 @@
-module github.com/kafkaesque-io/pulsar-monitor
+module github.com/datastax/pulsar-monitor
 
-go 1.13
+go 1.15
 
 require (
 	github.com/antonmedv/expr v1.8.8
