@@ -14,7 +14,7 @@
 
 all: push
 
-TAG ?= 0.0.1
+TAG ?= 0.0.3
 PREFIX ?= datastax/pulsar-monitor
 
 container:
