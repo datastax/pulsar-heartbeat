@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	github.com/antonmedv/expr v1.8.8
-	github.com/apache/pulsar-client-go v0.3.0
+	github.com/apache/pulsar-client-go v0.3.1-0.20201216220559-c1875485e1ad
 	github.com/apache/pulsar-client-go/oauth2 v0.0.0-20201202064457-9fe66edefe0d // indirect
 	github.com/apex/log v1.9.0
 	github.com/danieljoos/wincred v1.1.0 // indirect

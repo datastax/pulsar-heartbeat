@@ -72,8 +72,11 @@ github.com/apache/pulsar-client-go v0.1.0 h1:2BFZztxtNgFyOzBc+5On84CX6aIZW5xwh7K
 github.com/apache/pulsar-client-go v0.1.0/go.mod h1:G+CQVHnh2EPfNEQXOuisIDAyPMiKnzz4Vim/kjtj4U4=
 github.com/apache/pulsar-client-go v0.3.0 h1:rNhJ/ENwoEfZPHHwUHNxPBTNqNQE2LQEm7DXu043giM=
 github.com/apache/pulsar-client-go v0.3.0/go.mod h1:9eSgOadVhCfb2DfWtS1SCYaYIMk9VDOZztr4u3FO8cQ=
+github.com/apache/pulsar-client-go v0.3.1-0.20201216220559-c1875485e1ad h1:dVSODcfG7/Po2gk8fi9c6btIzzN4A1b/By2puWOABDU=
+github.com/apache/pulsar-client-go v0.3.1-0.20201216220559-c1875485e1ad/go.mod h1:pTmScVVHRhbB8wh0J+m5ZzHI0Lyfe0TwfPEbYEh+JUw=
 github.com/apache/pulsar-client-go/oauth2 v0.0.0-20200715083626-b9f8c5cedefb h1:E1P0FudxDdj2RhbveZC9i3PwukLCA/4XQSkBS/dw6/I=
 github.com/apache/pulsar-client-go/oauth2 v0.0.0-20200715083626-b9f8c5cedefb/go.mod h1:0UtvvETGDdvXNDCHa8ZQpxl+w3HbdFtfYZvDHLgWGTY=
+github.com/apache/pulsar-client-go/oauth2 v0.0.0-20201120111947-b8bd55bc02bd/go.mod h1:0UtvvETGDdvXNDCHa8ZQpxl+w3HbdFtfYZvDHLgWGTY=
 github.com/apache/pulsar-client-go/oauth2 v0.0.0-20201202064457-9fe66edefe0d h1:UR3Z6MjELJKTt5ph1eK5mYbYwS+uzNIoKbcCdU7cnLY=
 github.com/apache/pulsar-client-go/oauth2 v0.0.0-20201202064457-9fe66edefe0d/go.mod h1:gnyVPrpIp2XhG07THJh3ce3693JLtTRZ/TzgyZcF+ns=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
