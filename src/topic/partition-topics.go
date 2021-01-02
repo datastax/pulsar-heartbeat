@@ -86,7 +86,9 @@ func (pt *PartitionTopics) GetPartitionTopic() (bool, error) {
 	}
 
 	request.Header.Add("Authorization", "Bearer "+pt.Token)
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
 	response, err := client.Do(request)
 	if response != nil {
 		defer response.Body.Close()
@@ -135,7 +137,9 @@ func (pt *PartitionTopics) CreatePartitionTopic() error {
 
 	request.Header.Add("Content-Type", "text/plain")
 	request.Header.Add("Authorization", "Bearer "+pt.Token)
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
 	response, err := client.Do(request)
 	if response != nil {
 		defer response.Body.Close()

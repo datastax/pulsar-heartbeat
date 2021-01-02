@@ -14,14 +14,16 @@
 
 all: push
 
-TAG ?= 0.0.3
+TAG ?= 0.0.4
 PREFIX ?= datastax/pulsar-monitor
 
 container:
 	docker build -t $(PREFIX):$(TAG) .
+	docker tag $(PREFIX):$(TAG) ${PREFIX}:latest
 
 push: container
 	docker push $(PREFIX):$(TAG)
+	docker push $(PREFIX):latest
 
 clean:
 	docker rmi $(PREFIX):$(TAG)

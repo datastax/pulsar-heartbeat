@@ -54,6 +54,7 @@ func GetBrokers(restBaseURL, clusterName, token string) ([]string, error) {
 	newRequest.Header.Add("Authorization", "Bearer "+token)
 	client := &http.Client{
 		CheckRedirect: util.PreserveHeaderForRedirect,
+		Timeout:       10 * time.Second,
 	}
 	resp, err := client.Do(newRequest)
 	if resp != nil {
@@ -103,6 +104,7 @@ func BrokerTopicsQuery(brokerBaseURL, token string) ([]string, error) {
 	newRequest.Header.Add("Authorization", "Bearer "+token)
 	client := &http.Client{
 		CheckRedirect: util.PreserveHeaderForRedirect,
+		Timeout:       10 * time.Second,
 	}
 	response, err := client.Do(newRequest)
 	if response != nil {
@@ -163,7 +165,7 @@ func BrokerHealthCheck(broker, token string) error {
 	newRequest.Header.Add("Authorization", "Bearer "+token)
 	client := &http.Client{
 		CheckRedirect: util.PreserveHeaderForRedirect,
-		Timeout:       3 * time.Second,
+		Timeout:       10 * time.Second,
 	}
 	response, err := client.Do(newRequest)
 	if response != nil {
@@ -199,6 +201,7 @@ func QueryTopicStats(url, token string) error {
 	newRequest.Header.Add("Authorization", "Bearer "+token)
 	client := &http.Client{
 		CheckRedirect: util.PreserveHeaderForRedirect,
+		Timeout:       10 * time.Second,
 	}
 	response, err := client.Do(newRequest)
 	if response != nil {
