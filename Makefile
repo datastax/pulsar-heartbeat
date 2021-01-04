@@ -14,7 +14,10 @@
 
 all: push
 
-TAG ?= 0.0.4
+#
+# Docker tag with v prefix to differentiate the official release build, triggered by git tagging
+#
+TAG ?= v0.0.4
 PREFIX ?= datastax/pulsar-monitor
 
 container:
