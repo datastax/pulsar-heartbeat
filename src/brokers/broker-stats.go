@@ -33,7 +33,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/datastax/pulsar-monitor/src/util"
+	"github.com/datastax/pulsar-heartbeat/src/util"
 	"github.com/pkg/errors"
 )
 
@@ -50,7 +50,7 @@ func GetBrokers(restBaseURL, clusterName, token string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	newRequest.Header.Add("user-agent", "pulsar-monitor")
+	newRequest.Header.Add("user-agent", "pulsar-heartbeat")
 	newRequest.Header.Add("Authorization", "Bearer "+token)
 	client := &http.Client{
 		CheckRedirect: util.PreserveHeaderForRedirect,
@@ -100,7 +100,7 @@ func BrokerTopicsQuery(brokerBaseURL, token string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	newRequest.Header.Add("user-agent", "pulsar-monitor")
+	newRequest.Header.Add("user-agent", "pulsar-heartbeat")
 	newRequest.Header.Add("Authorization", "Bearer "+token)
 	client := &http.Client{
 		CheckRedirect: util.PreserveHeaderForRedirect,
@@ -161,7 +161,7 @@ func BrokerHealthCheck(broker, token string) error {
 	if err != nil {
 		return fmt.Errorf("broker healthcheck newRequest %s error %v", brokerURL, err)
 	}
-	newRequest.Header.Add("user-agent", "pulsar-monitor")
+	newRequest.Header.Add("user-agent", "pulsar-heartbeat")
 	newRequest.Header.Add("Authorization", "Bearer "+token)
 	client := &http.Client{
 		CheckRedirect: util.PreserveHeaderForRedirect,
@@ -197,7 +197,7 @@ func QueryTopicStats(url, token string) error {
 	if err != nil {
 		return fmt.Errorf("make http request %s error %v", url, err)
 	}
-	newRequest.Header.Add("user-agent", "pulsar-monitor")
+	newRequest.Header.Add("user-agent", "pulsar-heartbeat")
 	newRequest.Header.Add("Authorization", "Bearer "+token)
 	client := &http.Client{
 		CheckRedirect: util.PreserveHeaderForRedirect,

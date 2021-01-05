@@ -30,7 +30,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/datastax/pulsar-monitor/src/util"
+	"github.com/datastax/pulsar-heartbeat/src/util"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -144,7 +144,7 @@ func getTenantStats(burnellURL, token string) (Usages, error) {
 		log.Errorf("make http request %s error %v", usageURL, err)
 		return nil, err
 	}
-	newRequest.Header.Add("user-agent", "pulsar-monitor")
+	newRequest.Header.Add("user-agent", "pulsar-heartbeat")
 	newRequest.Header.Add("Authorization", "Bearer "+token)
 	client := &http.Client{
 		CheckRedirect: util.PreserveHeaderForRedirect,

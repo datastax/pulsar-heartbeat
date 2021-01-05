@@ -1,8 +1,8 @@
 version: '3'
 
 services:
-  pulsar-monitor:
-    image: 'datastax/pulsar-monitor:0.0.1'
+  pulsar-heartbeat:
+    image: 'datastax/pulsar-heartbeat:0.0.1'
     ports:
       - '8080:8080'
     volumes:

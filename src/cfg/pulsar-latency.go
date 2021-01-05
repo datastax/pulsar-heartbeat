@@ -32,8 +32,8 @@ import (
 
 	"github.com/apache/pulsar-client-go/pulsar"
 	log "github.com/apex/log"
-	"github.com/datastax/pulsar-monitor/src/topic"
-	"github.com/datastax/pulsar-monitor/src/util"
+	"github.com/datastax/pulsar-heartbeat/src/topic"
+	"github.com/datastax/pulsar-heartbeat/src/util"
 )
 
 const (

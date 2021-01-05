@@ -32,8 +32,8 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/datastax/pulsar-monitor/src/metering"
-	"github.com/datastax/pulsar-monitor/src/util"
+	"github.com/datastax/pulsar-heartbeat/src/metering"
+	"github.com/datastax/pulsar-heartbeat/src/util"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

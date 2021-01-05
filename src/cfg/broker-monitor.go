@@ -26,8 +26,8 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/datastax/pulsar-monitor/src/brokers"
-	"github.com/datastax/pulsar-monitor/src/util"
+	"github.com/datastax/pulsar-heartbeat/src/brokers"
+	"github.com/datastax/pulsar-heartbeat/src/util"
 )
 
 // EvaluateBrokers evaluates and reports all brokers health
@@ -46,7 +46,7 @@ func EvaluateBrokers(prefixURL, token string) error {
 	if failedBrokers > 0 {
 		errMsg := fmt.Sprintf("cluster %s has %d unhealthy brokers, error message %v", name, failedBrokers, err)
 		VerboseAlert(name+"-broker", errMsg, 3*time.Minute)
-		ReportIncident(name, name, "brokers are unhealthy reported by pulsar-monitor", errMsg, &brokerCfg.AlertPolicy)
+		ReportIncident(name, name, "brokers are unhealthy reported by pulsar-heartbeat", errMsg, &brokerCfg.AlertPolicy)
 	} else if err != nil {
 		errMsg := fmt.Sprintf("cluster %s Pulsar brokers test failed, error message %v", name, err)
 		VerboseAlert(name+"-broker", errMsg, 3*time.Minute)

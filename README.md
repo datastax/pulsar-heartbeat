@@ -1,17 +1,17 @@
-[![Go Report Card](https://goreportcard.com/badge/github.com/datastax/pulsar-monitor)](https://goreportcard.com/report/github.com/datastax/pulsar-monitor)
-[![CI Build](https://github.com/datastax/pulsar-monitor/workflows/ci/badge.svg
-)](https://github.com/datastax/pulsar-monitor/actions)
-[![codecov](https://codecov.io/gh/datastax/pulsar-monitor/branch/master/graph/badge.svg)](https://codecov.io/gh/datastax/pulsar-monitor)
+[![Go Report Card](https://goreportcard.com/badge/github.com/datastax/pulsar-heartbeat)](https://goreportcard.com/report/github.com/datastax/pulsar-heartbeat)
+[![CI Build](https://github.com/datastax/pulsar-heartbeat/workflows/ci/badge.svg
+)](https://github.com/datastax/pulsar-heartbeat/actions)
+[![codecov](https://codecov.io/gh/datastax/pulsar-heartbeat/branch/master/graph/badge.svg)](https://codecov.io/gh/datastax/pulsar-heartbeat)
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
-[![Docker image](https://img.shields.io/docker/image-size/datastax/pulsar-monitor)](https://hub.docker.com/r/datastax/pulsar-monitor/)
-[![LICENSE](https://img.shields.io/hexpm/l/pulsar.svg)](https://github.com/datastax/pulsar-monitor/blob/master/LICENSE)
+[![Docker image](https://img.shields.io/docker/image-size/datastax/pulsar-heartbeat)](https://hub.docker.com/r/datastax/pulsar-heartbeat/)
+[![LICENSE](https://img.shields.io/hexpm/l/pulsar.svg)](https://github.com/datastax/pulsar-heartbeat/blob/master/LICENSE)
 
 # Operation Monitoring for Pulsar Cluster
-Pulsar Monitor monitors the availability, tracks the performance, and reports failures of the Pulsar cluster. It produces synthetic workloads to measure end-to-end message pubsub latency.
+Pulsar Heartbeat monitors the availability, tracks the performance, and reports failures of the Pulsar cluster. It produces synthetic workloads to measure end-to-end message pubsub latency.
 
 It is a cloud native application that can be installed by Helm within the Pulsar Kubernetes cluster.
 
-Here is a list of features that Pulsar Monitor supports.
+Here is a list of features that Pulsar Heartbeat supports.
 - [x] monitor Pulsar admin REST API endpoint
 - [x] measure end-to-end message latency from producing to consuming messages
 - [x] for latency measure, it can produce a list of messages with user specified payload size and the number of messages
@@ -31,9 +31,9 @@ Here is a list of features that Pulsar Monitor supports.
 - [x] co-resident monitoring within the same Pulsar Kubernetes cluster
 
 This is a data driven tool that sources configuration from a yaml or json file. Here is a [template](../config/runtime_template.json).
-The configuration json file can be specified in the overwrite order of 
+The configuration json file can be specified in the overwrite order of
 - an environment variable `PULSAR_OPS_MONITOR_CFG`
-- an command line argument `./pulsar-monitor -config /path/to/pulsar_ops_monitor_config.yml`
+- an command line argument `./pulsar-heartbeat -config /path/to/pulsar_ops_monitor_config.yml`
 - A default path to `../config/runtime.yml`
 
 ## Observability
@@ -48,15 +48,15 @@ This tool exposes Prometheus compliant metrics at `\metrics` endpoint for scrapi
 | pulsar_k8s_broker_offline_counter | gauge | broker offline instances in the Kubernetes cluster |
 | pulsar_k8s_proxy_offline_counter | gauge | proxy offline instances in the Kubernetes cluster |
 | pulsar_k8s_bookkeeper_zookeeper_counter | gauge | zookeeper offline instances in the Kubernetes cluster |
-| pulsar_monitor_counter | counter | pulsar monitor heartbeat counter |
+| pulsar_monitor_counter | counter | the total number of heartbeats counter |
 | pulsar_tenant_size | gauge | the number of tenants that can be used as a health indicator of admin interface |
 
 ## In-cluster monitoring
-Pulsar monitor can be deployed within the same Pulsar Kubernetes cluster. Kubernetes' pod and service , and individual broker monitoring are only supported within the same Kubernetes cluster deployment.
+Pulsar heartbeat can be deployed within the same Pulsar Kubernetes cluster. Kubernetes' pod and service , and individual broker monitoring are only supported within the same Kubernetes cluster deployment.
 
 
 ## Docker
-Pulsar Monitor's official docker image can be pulled [here](https://hub.docker.com/repository/docker/datastax/pulsar-monitor)
+Pulsar Heartbeat's official docker image can be pulled [here](https://hub.docker.com/repository/docker/datastax/pulsar-heartbeat)
 
 ### Docker compose
 `./config/runtime.yml` or `./config/runtime.json` must have a Pulsar jwt and configured properly.
@@ -76,34 +76,34 @@ $ make
 Run docker container with Pulsar CA certificate and expose Prometheus metrics for collection.
 
 ``` bash
-$ docker run -d -it -v $HOME/go/src/github.com/datastax/pulsar-monitor/config/runtime.yml:/config/runtime.yml -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-bundle.crt -p 8080:8080 --name=pulsar-monitor datastax/pulsar-monitor:latest
+$ docker run -d -it -v $HOME/go/src/github.com/datastax/pulsar-heartbeat/config/runtime.yml:/config/runtime.yml -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-bundle.crt -p 8080:8080 --name=pulsar-heartbeat datastax/pulsar-heartbeat:latest
 ```
 
 ## Helm chart
 
 ### Install as an individual deployment using helm
-Pulsar Monitor can be installed by this [helm chart](https://github.com/datastax/pulsar-helm-chart/tree/master/helm-chart-sources/pulsar-monitor)
+Pulsar heartbeat can be installed by this [helm chart](https://github.com/datastax/pulsar-helm-chart/tree/master/helm-chart-sources/pulsar-heartbeat)
 With this chart, it can monitor mutliple remote Pulsar clusters or co-reside on the same Pulsar cluster.
 
 Helm 3
 ```
-helm3 install pulsar-monitor kafkaesque/pulsar --namespace monitoring --values ./config/helm-values/pulsar-monitor-values.yaml
+helm3 install pulsar-heartbeat kafkaesque/pulsar --namespace monitoring --values ./config/helm-values/pulsar-heartbeat-values.yaml
 ```
 
 Helm2
 ```
-helm install kafkaesque/pulsar --name pulsar-monitor --namespace monitoring --values ./config/helm-values/pulsar-monitor-values.yaml
+helm install kafkaesque/pulsar --name pulsar-heartbeat --namespace monitoring --values ./config/helm-values/pulsar-heartbeat-values.yaml
 ```
 
 ### Install as part of Kesque Pulsar cluster using helm
 
-Pulsar Monitor can be directly enabled inside [the Kesque's Pulsar chart](https://github.com/datastax/pulsar-helm-chart/blob/master/helm-chart-sources/pulsar/values.yaml#L1571)
+Pulsar Heartbeat can be directly enabled inside [the Kesque's Pulsar chart](https://github.com/datastax/pulsar-helm-chart/blob/master/helm-chart-sources/pulsar/values.yaml#L1571)
 
 
 ## Development
 
 ### How to build
-This script builds the Pulsar Monitor Go application, runs code static analysis(golint), runs unit tests, and creates a binary under ./bin/pulsar-monitor.
+This script builds the Pulsar Heartbeat Go application, runs code static analysis(golint), runs unit tests, and creates a binary under ./bin/pulsar-heartbeat.
 ```
 $ ./scripts/ci.sh
 ```

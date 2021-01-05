@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v1
         with:
           fetch-depth: 1
-          path: go/src/github.com/datastax/pulsar-monitor
+          path: go/src/github.com/datastax/pulsar-heartbeat
 
       - name: Lint Go Code
         run: |
@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@v1
         with:
           fetch-depth: 1
-          path: go/src/github.com/datastax/pulsar-monitor
+          path: go/src/github.com/datastax/pulsar-heartbeat
       - name: Build Binary
         run: |
           go mod download
@@ -71,16 +71,16 @@ jobs:
           cd ./scripts
           ./test_coverage.sh
         env:
-          GOPATH: /home/runner/work/pulsar-monitor/go
+          GOPATH: /home/runner/work/pulsar-heartbeat/go
       - name: Upload Coverage
-        if: github.repository == 'datastax/pulsar-monitor'
+        if: github.repository == 'datastax/pulsar-heartbeat'
         uses: codecov/codecov-action@v1.0.0
         with :
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage.txt
           yml: ./.codecov.yml
           fail_ci_fi_error: true
-          path: go/src/github.com/datastax/pulsar-monitor
+          path: go/src/github.com/datastax/pulsar-heartbeat
   docker:
     name: docker
     runs-on: ubuntu-latest 
@@ -89,9 +89,9 @@ jobs:
         uses: actions/checkout@v1
         with:
           fetch-depth: 1
-          path: go/src/github.com/datastax/pulsar-monitor
+          path: go/src/github.com/datastax/pulsar-heartbeat
 
       - name: Build Docker Image
         run: |
           pwd
-          sudo docker build -t pulsar-monitor .
+          sudo docker build -t pulsar-heartbeat .

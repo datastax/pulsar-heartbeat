@@ -1,4 +1,4 @@
-module github.com/datastax/pulsar-monitor
+module github.com/datastax/pulsar-heartbeat
 
 go 1.15
 

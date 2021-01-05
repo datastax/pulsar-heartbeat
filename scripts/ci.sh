@@ -20,8 +20,8 @@ go vet ./...
 
 echo run go build
 mkdir -p ${DIR}/../bin
-rm -f ${DIR}/../bin/pulsar-monitor
-go build -o ${DIR}/../bin/pulsar-monitor .
+rm -f ${DIR}/../bin/pulsar-heartbeat
+go build -o ${DIR}/../bin/pulsar-heartbeat .
 
 # Memory heap and stack allocation analysis for GC optimization
-# go build -gcflags -m -o ${DIR}/../bin/pulsar-monitor .
+# go build -gcflags -m -o ${DIR}/../bin/pulsar-heartbeat .
