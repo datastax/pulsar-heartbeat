@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/antonmedv/expr"
-	"github.com/datastax/pulsar-monitor/src/util"
+	"github.com/datastax/pulsar-heartbeat/src/util"
 	"github.com/hashicorp/go-retryablehttp"
 )
 

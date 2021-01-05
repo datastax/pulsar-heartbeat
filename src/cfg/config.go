@@ -30,7 +30,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/datastax/pulsar-monitor/src/util"
+	"github.com/datastax/pulsar-heartbeat/src/util"
 
 	"github.com/apex/log"
 	"github.com/ghodss/yaml"

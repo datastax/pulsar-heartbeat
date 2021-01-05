@@ -27,8 +27,8 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/datastax/pulsar-monitor/src/k8s"
-	"github.com/datastax/pulsar-monitor/src/util"
+	"github.com/datastax/pulsar-heartbeat/src/k8s"
+	"github.com/datastax/pulsar-heartbeat/src/util"
 )
 
 const clusterMonInterval = 10 * time.Second
@@ -82,7 +82,7 @@ func EvaluateClusterHealth(client *k8s.Client) error {
 		errMsg := fmt.Sprintf("cluster %s, k8s pulsar cluster status is unhealthy, error message %s", cluster, desc)
 		if status.Status == k8s.TotalDown {
 			VerboseAlert(cluster, errMsg, 3*time.Minute)
-			ReportIncident(cluster, cluster, "kubernete cluster is down, reported by pulsar-monitor", errMsg, &k8sCfg.AlertPolicy)
+			ReportIncident(cluster, cluster, "kubernete cluster is down, reported by pulsar-heartbeat", errMsg, &k8sCfg.AlertPolicy)
 		}
 	} else {
 		ClearIncident(cluster)

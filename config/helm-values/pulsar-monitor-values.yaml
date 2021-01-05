@@ -1,12 +1,12 @@
 replicaCount: 1
 
 image:
-  repository: datastax/pulsar-monitor
+  repository: datastax/pulsar-heartbeat
   tag: latest
   pullPolicy: IfNotPresent
 
 pulsarmonitor:
-  component: "standalone-pulsar-monitor"
+  component: "standalone-pulsar-heartbeat"
 incluster: false
 
 config:
