@@ -83,7 +83,7 @@ jobs:
           path: go/src/github.com/datastax/pulsar-heartbeat
 
   build_multiple_os_arch:
-    name: build and test
+    name: build on multiple OS and arch
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go
