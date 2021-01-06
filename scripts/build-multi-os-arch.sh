@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 #
 # build releases for multiple OS and Architecture
 #

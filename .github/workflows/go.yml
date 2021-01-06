@@ -81,6 +81,25 @@ jobs:
           yml: ./.codecov.yml
           fail_ci_fi_error: true
           path: go/src/github.com/datastax/pulsar-heartbeat
+
+  build_multiple_os_arch:
+    name: build and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
+      - name: Check out code
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+          path: go/src/github.com/datastax/pulsar-heartbeat
+      - name: Build Binary
+        run: |
+          cd ./scripts
+          ./build_multiple_os_arch.sh
+
   docker:
     name: docker
     runs-on: ubuntu-latest 
