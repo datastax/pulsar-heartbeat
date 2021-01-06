@@ -98,7 +98,7 @@ jobs:
       - name: Build Binary
         run: |
           cd ./scripts
-          ./build_multiple_os_arch.sh
+          ./build-multi-os-arch.sh
 
   docker:
     name: docker
