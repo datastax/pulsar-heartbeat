@@ -7,7 +7,7 @@
 [![LICENSE](https://img.shields.io/hexpm/l/pulsar.svg)](https://github.com/datastax/pulsar-heartbeat/blob/master/LICENSE)
 
 # Operation Monitoring for Pulsar Cluster
-Pulsar Heartbeat monitors the availability, tracks the performance, and reports failures of the Pulsar cluster. It produces synthetic workloads to measure end-to-end message pubsub latency.
+Pulsar Heartbeat monitors Pulsar cluster availability, tracks latency of Pulsar message pubsub, and reports failures of the Pulsar cluster. It produces synthetic workloads to measure end-to-end message pubsub latency.
 
 It is a cloud native application that can be installed by Helm within the Pulsar Kubernetes cluster.
 
@@ -30,7 +30,7 @@ Here is a list of features that Pulsar Heartbeat supports.
 - [x] monitor multiple Pulsar clusters (with no kubernetes pods monitoring)
 - [x] co-resident monitoring within the same Pulsar Kubernetes cluster
 
-This is a data driven tool that sources configuration from a yaml or json file. Here is a [template](../config/runtime_template.json).
+This is a data driven tool that sources configuration from a yaml or json file. Here is a [template](config/runtime_template.yml).
 The configuration json file can be specified in the overwrite order of
 - an environment variable `PULSAR_OPS_MONITOR_CFG`
 - an command line argument `./pulsar-heartbeat -config /path/to/pulsar_ops_monitor_config.yml`
@@ -52,26 +52,19 @@ This tool exposes Prometheus compliant metrics at `\metrics` endpoint for scrapi
 | pulsar_tenant_size | gauge | the number of tenants that can be used as a health indicator of admin interface |
 
 ## In-cluster monitoring
-Pulsar heartbeat can be deployed within the same Pulsar Kubernetes cluster. Kubernetes' pod and service , and individual broker monitoring are only supported within the same Kubernetes cluster deployment.
+Pulsar heartbeat can be deployed within the same Pulsar Kubernetes cluster. Kubernetes monitoring and individual broker monitoring are only supported within the same Pulsar Kubernetes cluster deployment.
 
 
 ## Docker
 Pulsar Heartbeat's official docker image can be pulled [here](https://hub.docker.com/repository/docker/datastax/pulsar-heartbeat)
 
 ### Docker compose
-`./config/runtime.yml` or `./config/runtime.json` must have a Pulsar jwt and configured properly.
-
 ``` bash
 $ docker-compose up
 ```
 
 ### Docker example
 The runtime.yml/yaml or runtime.json file must be mounted to /config/runtime.yml as the default configuration path.
-
-This command runs a multi stage build to produce a docker image.
-```
-$ make
-```
 
 Run docker container with Pulsar CA certificate and expose Prometheus metrics for collection.
 
@@ -81,8 +74,11 @@ $ docker run -d -it -v $HOME/go/src/github.com/datastax/pulsar-heartbeat/config/
 
 ## Helm chart
 
-### Install as an individual deployment using helm
-Pulsar heartbeat can be installed by this [helm chart](https://github.com/datastax/pulsar-helm-chart/tree/master/helm-chart-sources/pulsar-heartbeat)
+### Install as part of Pulsar cluster using helm
+Pulsar heartbeat can be installed as part of Pulsar cluster in this [helm chart](https://github.com/datastax/pulsar-helm-chart/blob/master/helm-chart-sources/pulsar/values.yaml#L273)
+
+### Install as an individual Chart using helm
+It can also be installed independently under [its own chart](https://github.com/kafkaesque-io/pulsar-helm-chart/tree/master/helm-chart-sources/pulsar-monitor).
 With this chart, it can monitor mutliple remote Pulsar clusters or co-reside on the same Pulsar cluster.
 
 Helm 3
@@ -107,3 +103,9 @@ This script builds the Pulsar Heartbeat Go application, runs code static analysi
 ```
 $ ./scripts/ci.sh
 ```
+
+This command runs a multi stage build to produce a docker image.
+```
+$ make
+```
+
