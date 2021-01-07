@@ -19,11 +19,6 @@ function build_os_arch() {
   gzip ${DIR}/../bin/releases/pulsar-heartbeat-$VERSION-$OS-$ARCH
 }
 cd $DIR/../src
-# test lint, vet, and build as basic build steps in CI
-echo run golint
-golint ./...
-echo run go vet
-go vet ./...
 
 echo "run go build for version ${VERSION}"
 mkdir -p ${DIR}/../bin/releases
