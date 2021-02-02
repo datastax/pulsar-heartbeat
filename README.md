@@ -79,13 +79,6 @@ For the following commands, Helm version 3 is supported.
 ### Install as part of Pulsar cluster using helm
 Pulsar Heartbeat can be installed as part of Pulsar cluster in this [Helm chart](https://github.com/datastax/pulsar-helm-chart/blob/master/helm-chart-sources/pulsar/values.yaml#L273). 
 
-### Install as an individual Chart using helm
-Pulsar Heartbeat can also be installed independently under [its own Helm chart](https://github.com/kafkaesque-io/pulsar-helm-chart/tree/master/helm-chart-sources/pulsar-monitor). With this chart, it can monitor mutliple remote Pulsar clusters or co-reside on the same Pulsar cluster.
-
-```
-helm install pulsar-heartbeat datastax/pulsar --namespace monitoring --values ./config/helm-values/pulsar-heartbeat-values.yaml
-```
-
 ### Install as part of DataStax Pulsar cluster using Helm
 
 Pulsar Heartbeat can be directly enabled inside [the DataStax Pulsar chart](https://github.com/datastax/pulsar-helm-chart/blob/master/helm-chart-sources/pulsar/values.yaml#L1571).
