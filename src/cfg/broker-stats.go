@@ -152,7 +152,7 @@ func BrokerTopicsQuery(brokerBaseURL, token string) ([]string, error) {
 }
 
 // ConnectBrokerHealthcheckTopic reads the latest messages off broker's healthcheck topic
-func ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL, token string, duration time.Duration, completeChan chan error) {
+func ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL, token string, completeChan chan error) {
 	client, err := GetPulsarClient(pulsarURL, token)
 	if err != nil {
 		completeChan <- err
@@ -174,7 +174,7 @@ func ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL, token stri
 
 	ctx := context.Background()
 
-	log.Debugf("created reader on topic %s", topicName)
+	statsLog.Debugf("created reader on topic %s", topicName)
 	//
 	found := false
 	for reader.HasNext() && !found {
@@ -183,8 +183,8 @@ func ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL, token stri
 			completeChan <- err
 			return
 		}
-		found = time.Now().Sub(msg.PublishTime()) < duration
-		statsLog.Debugf("Received message : %s publish time %v %v", string(msg.Payload()), msg.PublishTime(), found)
+		found = time.Now().Sub(msg.PublishTime()) < 60*time.Second
+		statsLog.Debugf("Received message : publish time %v %v", msg.PublishTime(), found)
 	}
 
 	if found {
@@ -201,7 +201,7 @@ func EvaluateBrokers(urlPrefix, clusterName, pulsarURL, token string, duration t
 		return 0, err
 	}
 
-	log.Infof("a list of brokers %v", brokers)
+	statsLog.Infof("a list of brokers %v", brokers)
 	failedBrokers := 0
 	errStr := ""
 	// notify the main thread with the latency to complete the exit of all consumers
@@ -209,7 +209,7 @@ func EvaluateBrokers(urlPrefix, clusterName, pulsarURL, token string, duration t
 	defer close(completeChan)
 
 	for _, brokerURL := range brokers {
-		go ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL, token, duration, completeChan)
+		go ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL, token, completeChan)
 	}
 
 	receivedCounter := 0
@@ -219,12 +219,13 @@ func EvaluateBrokers(urlPrefix, clusterName, pulsarURL, token string, duration t
 		select {
 		case signal := <-completeChan:
 			receivedCounter++
-			log.Infof(" broker received counter %d", receivedCounter)
+			statsLog.Infof(" broker received counter %d", receivedCounter)
 			if signal != nil {
-				errStr = errStr + signal.Error()
+				failedBrokers++
+				errStr = errStr + signal.Error() + ";"
 			}
 		case <-ticker.C:
-			return 0, fmt.Errorf("received %d msg but timed out to receive all %d messages",
+			return failedBrokers, fmt.Errorf("received %d msg but timed out to receive all %d messages",
 				receivedCounter, len(brokers))
 		}
 	}
