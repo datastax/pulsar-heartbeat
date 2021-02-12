@@ -64,7 +64,6 @@ func main() {
 
 	cfg.AnalyticsAppStart(util.AssignString(config.Name, "dev"))
 	cfg.MonitorK8sPulsarCluster()
-	cfg.MonitorBrokers()
 	cfg.RunInterval(cfg.PulsarTenants, util.TimeDuration(config.PulsarAdminConfig.IntervalSeconds, 120, time.Second))
 	cfg.RunInterval(cfg.StartHeartBeat, util.TimeDuration(config.OpsGenieConfig.IntervalSeconds, 240, time.Second))
 	cfg.RunInterval(cfg.UptimeHeartBeat, 30*time.Second) // fixed 30 seconds for heartbeat
@@ -72,8 +71,6 @@ func main() {
 	cfg.TopicLatencyTestThread()
 	cfg.WebSocketTopicLatencyTestThread()
 	cfg.PushToPrometheusProxyThread()
-	// Disable tenant usage metering, this is not a monitoring function
-	// BuildTenantsUsageThread()
 
 	if config.PrometheusConfig.ExposeMetrics {
 		log.Infof("start to listen to http port %s", config.PrometheusConfig.Port)

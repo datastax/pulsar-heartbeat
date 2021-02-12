@@ -101,6 +101,7 @@ type PulsarAdminRESTCfg struct {
 // TopicCfg is topic configuration
 type TopicCfg struct {
 	Name               string         `json:"name"`
+	ClusterName        string         `json:"clusterName"` // used for broker monitoring if specified
 	Token              string         `json:"token"`
 	TrustStore         string         `json:"trustStore"`
 	NumberOfPartitions int            `json:"numberOfPartitions"`

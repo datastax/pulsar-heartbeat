@@ -249,6 +249,7 @@ func TopicLatencyTestThread() {
 			for {
 				select {
 				case <-ticker.C:
+					go TestBrokers(t)
 					TestTopicLatency(t)
 				}
 			}

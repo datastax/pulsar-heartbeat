@@ -372,7 +372,6 @@ func getOpsGenieAlertIDRetry(entity, requestID, genieKey string, timeout time.Du
 				incident.alertID = alertID
 				incidents[entity] = incident
 			}
-			log.Infof("found...")
 			incidentsLock.Unlock()
 			return
 		}
