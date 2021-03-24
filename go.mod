@@ -3,6 +3,7 @@ module github.com/datastax/pulsar-heartbeat
 go 1.15
 
 require (
+	github.com/PagerDuty/go-pagerduty v1.3.0
 	github.com/antonmedv/expr v1.8.8
 	github.com/apache/pulsar-client-go v0.4.0-candidate-1
 	github.com/apache/pulsar-client-go/oauth2 v0.0.0-20201202064457-9fe66edefe0d // indirect
