@@ -243,10 +243,14 @@ func NewIncident(component, alias, msg, desc, priority string) Incident {
 // CreateIncident creates incident
 func CreateIncident(component, alias, msg, desc, priority string) {
 	genieKey := GetConfig().OpsGenieConfig.AlertKey
-	err := CreateOpsGenieAlert(NewIncident(component, alias, msg, desc, priority), genieKey)
-	if err != nil {
-		Alert(fmt.Sprintf("from %s Opsgenie report incident error %v", component, err))
+	if genieKey != "" {
+		err := CreateOpsGenieAlert(NewIncident(component, alias, msg, desc, priority), genieKey)
+		if err != nil {
+			Alert(fmt.Sprintf("from %s Opsgenie report incident error %v", component, err))
+		}
 	}
+
+	CreatePDIncident(component, alias, msg, GetConfig().PagerDutyConfig.IntegrationKey)
 }
 
 // RemoveIncident removes an existing incident
@@ -275,6 +279,8 @@ func RemoveIncident(component string) {
 		if err != nil {
 			Alert(fmt.Sprintf("from %s Opsgenie remove incident error %v", component, err))
 		}
+
+		ResolvePDIncident(component, record.alertID, GetConfig().PagerDutyConfig.IntegrationKey)
 	}
 }
 

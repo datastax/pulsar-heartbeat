@@ -58,6 +58,11 @@ type OpsGenieCfg struct {
 	IntervalSeconds int    `json:"intervalSeconds"`
 }
 
+// PagerDutyCfg is opsGenie configuration
+type PagerDutyCfg struct {
+	IntegrationKey        string `json:"integrationKey"`
+}
+
 // AnalyticsCfg is analytics usage and statistucs tracking configuration
 type AnalyticsCfg struct {
 	APIKey            string `json:"apiKey"`
@@ -173,6 +178,7 @@ type Configuration struct {
 	PrometheusConfig  PrometheusCfg      `json:"prometheusConfig"`
 	SlackConfig       SlackCfg           `json:"slackConfig"`
 	OpsGenieConfig    OpsGenieCfg        `json:"opsGenieConfig"`
+	PagerDutyConfig   PagerDutyCfg       `json:"pagerDutyConfig"`
 	PulsarAdminConfig PulsarAdminRESTCfg `json:"pulsarAdminRestConfig"`
 	PulsarTopicConfig []TopicCfg         `json:"pulsarTopicConfig"`
 	SitesConfig       SitesCfg           `json:"sitesConfig"`
