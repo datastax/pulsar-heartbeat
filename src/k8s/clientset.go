@@ -1,23 +1,29 @@
- //
- //  Copyright (c) 2020-2021 Datastax, Inc.
- //  
- //  Licensed to the Apache Software Foundation (ASF) under one
- //  or more contributor license agreements.  See the NOTICE file
- //  distributed with this work for additional information
- //  regarding copyright ownership.  The ASF licenses this file
- //  to you under the Apache License, Version 2.0 (the
- //  "License"); you may not use this file except in compliance
- //  with the License.  You may obtain a copy of the License at
- //  
- //     http://www.apache.org/licenses/LICENSE-2.0
- //  
- //  Unless required by applicable law or agreed to in writing,
- //  software distributed under the License is distributed on an
- //  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- //  KIND, either express or implied.  See the License for the
- //  specific language governing permissions and limitations
- //  under the License.
- //
+//
+//  Copyright (c) 2020-2021 Datastax, Inc.
+//
+//
+//
+//  Licensed to the Apache Software Foundation (ASF) under one
+//  or more contributor license agreements.  See the NOTICE file
+//  distributed with this work for additional information
+//  regarding copyright ownership.  The ASF licenses this file
+//  to you under the Apache License, Version 2.0 (the
+//  "License"); you may not use this file except in compliance
+//  with the License.  You may obtain a copy of the License at
+//
+//
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+//
+//
+//  Unless required by applicable law or agreed to in writing,
+//  software distributed under the License is distributed on an
+//  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+//  KIND, either express or implied.  See the License for the
+//  specific language governing permissions and limitations
+//  under the License.
+//
 
 package k8s
 
@@ -196,6 +202,19 @@ func (c *Client) UpdateReplicas(namespace string) error {
 		c.Broker.Replicas = *(broker.Items[0]).Spec.Replicas
 	}
 
+	if c.Broker.Replicas+c.BrokerSts.Replicas == 0 {
+		// broker can be deployed as sts with component=broker
+		brokersts, err = c.getStatefulSets(namespace, BrokerDeployment)
+		if err != nil {
+			return err
+		}
+		if len(brokersts.Items) == 0 {
+			c.BrokerSts.Replicas = 0
+		} else {
+			c.BrokerSts.Replicas = *(brokersts.Items[0]).Spec.Replicas
+		}
+	}
+
 	proxy, err := c.getDeployments(namespace, ProxyDeployment)
 	if err != nil {
 		return err
@@ -224,20 +243,20 @@ func (c *Client) UpdateReplicas(namespace string) error {
 // WatchPods watches the running pods vs intended replicas
 func (c *Client) WatchPods(namespace string) error {
 
-	if counts, err := c.runningPodCounts(namespace, "zookeeper"); err == nil {
+	if counts, err := c.runningPodCounts(namespace, ZookeeperSts); err == nil {
 		c.Zookeeper.Instances = int32(counts)
 	} else {
 		return err
 	}
 
-	if counts, err := c.runningPodCounts(namespace, "bookkeeper"); err == nil {
+	if counts, err := c.runningPodCounts(namespace, BookkeeperSts); err == nil {
 		c.Bookkeeper.Instances = int32(counts)
 	} else {
 		return err
 	}
 
 	if c.Broker.Replicas > 0 {
-		if counts, err := c.runningPodCounts(namespace, "broker"); err == nil {
+		if counts, err := c.runningPodCounts(namespace, BrokerDeployment); err == nil {
 			c.Broker.Instances = int32(counts)
 		} else {
 			return err
@@ -245,15 +264,22 @@ func (c *Client) WatchPods(namespace string) error {
 	}
 
 	if c.BrokerSts.Replicas > 0 {
-		if counts, err := c.runningPodCounts(namespace, "brokersts"); err == nil {
-			c.BrokerSts.Instances = int32(counts)
+		var brokerStsCount, brokerCount int32
+		if counts, err := c.runningPodCounts(namespace, BrokerSts); err == nil {
+			brokerCount = int32(counts)
 		} else {
 			return err
 		}
+		if counts, err := c.runningPodCounts(namespace, BrokerDeployment); err == nil {
+			brokerStsCount = int32(counts)
+		} else {
+			return err
+		}
+		c.BrokerSts.Instances = brokerCount + brokerStsCount
 	}
 
 	if c.Proxy.Replicas > 0 {
-		if counts, err := c.runningPodCounts(namespace, "proxy"); err == nil {
+		if counts, err := c.runningPodCounts(namespace, ProxyDeployment); err == nil {
 			c.Proxy.Instances = int32(counts)
 		} else {
 			return err
@@ -407,6 +433,19 @@ func (c *Client) getStatefulSets(namespace, component string) (*v1.StatefulSetLi
 	return stsClient.List(context.TODO(), meta_v1.ListOptions{
 		LabelSelector: fmt.Sprintf("component=%s", component),
 	})
+}
+
+func ClusterStatusCodeString(status ClusterStatusCode) string {
+	switch status {
+	case TotalDown:
+		return "Down"
+	case OK:
+		return "OK"
+	case PartialReady:
+		return "PartialReady"
+	default:
+		return "invalid"
+	}
 }
 
 // GetObjectMetaData returns metadata of a given k8s object
