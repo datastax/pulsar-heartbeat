@@ -87,7 +87,7 @@ func EvaluateClusterHealth(client *k8s.Client) error {
 	} else {
 		ClearIncident(cluster)
 	}
-	log.Infof("k8s cluster status %v", status)
+	log.Infof("k8s cluster status %v %s", status, k8s.ClusterStatusCodeString(status.Status))
 	return nil
 }
 
