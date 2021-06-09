@@ -77,7 +77,7 @@ func HeartBeatToOpsGenie(genieURL, genieKey string) error {
 		return err
 	}
 
-	log.Infof("opsgenie status code ", resp.StatusCode)
+	log.Infof("opsgenie status code %d", resp.StatusCode)
 	if resp.StatusCode > 300 {
 		msg := fmt.Sprintf("from %s Opsgenie returns incorrect status code %d", name, resp.StatusCode)
 		Alert(msg)

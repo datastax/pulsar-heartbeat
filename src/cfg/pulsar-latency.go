@@ -309,10 +309,8 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 			errMsg = fmt.Sprintf("cluster %s, %s test message latency %v over six standard deviation %v ms and mean is %v ms",
 				clusterName, testName, result.Latency, float64(stddev/1000.0), float64(mean/1000.0))
 		}
-		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, false)
-		VerboseAlert(clusterName+"-latency-stddev", errMsg, 10*time.Minute)
+		log.Warnf("%s %s", clusterName+"-latency-stddev", errMsg)
 		// standard deviation does not generate alerts
-		// ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
 	} else {
 		log.Infof("succeeded to sent %d messages to topic %s on %s test cluster %s",
 			len(payloads), topicCfg.TopicName, testName, topicCfg.PulsarURL)
