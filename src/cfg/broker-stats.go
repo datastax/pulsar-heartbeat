@@ -183,7 +183,7 @@ func ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL, token stri
 			completeChan <- err
 			return
 		}
-		found = time.Now().Sub(msg.PublishTime()) < 60*time.Second
+		found = time.Now().Sub(msg.PublishTime()) < 120*time.Second
 		statsLog.Debugf("Received message : publish time %v %v", msg.PublishTime(), found)
 	}
 
@@ -254,11 +254,11 @@ func TestBrokers(topicCfg TopicCfg) error {
 	failedBrokers, err := EvaluateBrokers(topicCfg.AdminURL, topicCfg.ClusterName, topicCfg.PulsarURL, token, intervalDuration)
 
 	if failedBrokers > 0 {
-		errMsg := fmt.Sprintf("cluster %s has %d unhealthy brokers, error message %v", name, failedBrokers, err)
+		errMsg := fmt.Sprintf("cluster %s has %d unhealthy brokers, error message: %v", name, failedBrokers, err)
 		VerboseAlert(name+"-broker", errMsg, 3*time.Minute)
 		ReportIncident(name, name, "brokers are unhealthy reported by pulsar-heartbeat", errMsg, &topicCfg.AlertPolicy)
 	} else if err != nil {
-		errMsg := fmt.Sprintf("cluster %s Pulsar brokers test failed, error message %v", name, err)
+		errMsg := fmt.Sprintf("cluster %s Pulsar brokers test failed, error message: %v", name, err)
 		VerboseAlert(name+"-broker", errMsg, 3*time.Minute)
 		ReportIncident(name, name, "brokers test error reported by pulsar-heartbeat", errMsg, &topicCfg.AlertPolicy)
 	} else {
