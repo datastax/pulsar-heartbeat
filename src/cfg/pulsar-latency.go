@@ -306,7 +306,7 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 			errMsg = fmt.Sprintf("cluster %s, %s test message latency %v over six standard deviation %v ms and mean is %v ms",
 				clusterName, testName, result.Latency, float64(stddev/1000.0), float64(mean/1000.0))
 		}
-		VerboseAlert(clusterName+"-websocket-stddev", errMsg, 24*time.Hour)
+		VerboseAlert(clusterName+"-pubsub-latency-stddev", errMsg, 24*time.Hour)
 		// standard deviation does not generate alerts
 	} else {
 		log.Infof("succeeded to sent %d messages to topic %s on %s test cluster %s",
