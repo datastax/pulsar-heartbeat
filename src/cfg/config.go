@@ -60,7 +60,7 @@ type OpsGenieCfg struct {
 
 // PagerDutyCfg is opsGenie configuration
 type PagerDutyCfg struct {
-	IntegrationKey        string `json:"integrationKey"`
+	IntegrationKey string `json:"integrationKey"`
 }
 
 // AnalyticsCfg is analytics usage and statistucs tracking configuration

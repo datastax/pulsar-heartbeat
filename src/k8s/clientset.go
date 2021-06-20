@@ -435,6 +435,7 @@ func (c *Client) getStatefulSets(namespace, component string) (*v1.StatefulSetLi
 	})
 }
 
+// ClusterStatusCodeString is the cluster status code in Kubernetes
 func ClusterStatusCodeString(status ClusterStatusCode) string {
 	switch status {
 	case TotalDown:

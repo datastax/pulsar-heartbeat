@@ -187,7 +187,6 @@ func trackIncident(component, msg, desc string, eval *AlertPolicyCfg) bool {
 func ReportIncident(component, alias, msg, desc string, eval *AlertPolicyCfg) {
 	if eval.Ceiling > 0 && trackIncident(component, msg, desc, eval) {
 		CreateIncident(component, alias, msg, desc, "P2")
-		AnalyticsReportIncident(component, alias, msg, desc)
 		return
 	}
 
@@ -206,7 +205,6 @@ func ReportIncident(component, alias, msg, desc string, eval *AlertPolicyCfg) {
 
 	if count > 2 {
 		CreateIncident(component, alias, msg, desc, "P2")
-		AnalyticsReportIncident(component, alias, msg+" reported by multiple monitor target failures", desc)
 	}
 }
 
@@ -265,8 +263,6 @@ func RemoveIncident(component string) {
 		incidentsLock.Unlock()
 
 		downtimeDuration := time.Since(record.createdAt)
-		seconds := int(downtimeDuration.Seconds())
-		AnalyticsClearIncident(component, seconds)
 		PromLatencySum(PubSubDowntimeGaugeOpt(), component, downtimeDuration)
 
 		if record.alertID == "" {
@@ -286,10 +282,8 @@ func RemoveIncident(component string) {
 
 // CalculateDowntime calculate downtime
 func CalculateDowntime(component string) {
-	if record, ok := downtimeTracker[component]; ok {
+	if _, ok := downtimeTracker[component]; ok {
 		delete(downtimeTracker, component)
-		seconds := int(time.Since(record.createdAt).Seconds())
-		AnalyticsDowntime(component, seconds)
 	}
 }
 
