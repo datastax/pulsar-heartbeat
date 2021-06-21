@@ -211,7 +211,7 @@ func TestWsLatency(config WsConfig) {
 	} else if stddev, mean, within3Sigma := stdVerdict.Push(float64(result.Latency.Milliseconds())); !within3Sigma {
 		errMsg := fmt.Sprintf("cluster %s, websocket test message latency %v over three standard deviation %v ms and mean is %v ms",
 			config.Cluster, result.Latency, stddev, mean)
-		VerboseAlert(config.Name+"-websocket-stddev", errMsg, 24*time.Hour)
+		VerboseAlert(config.Name+"-websocket-stddev", errMsg, LogOnly)
 		ReportIncident(config.Name, config.Cluster, "websocket persisted latency test failure", errMsg, &config.AlertPolicy)
 
 	} else {

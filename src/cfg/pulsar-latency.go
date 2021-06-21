@@ -291,7 +291,7 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
 	} else if !result.InOrderDelivery {
 		errMsg := fmt.Sprintf("cluster %s, %s test Pulsar message received out of order", clusterName, testName)
-		VerboseAlert(clusterName+"-latency-outoforder", errMsg, 3*time.Minute)
+		VerboseAlert(clusterName+"-latency-out-of-order", errMsg, 3*time.Minute)
 	} else if result.Latency > expectedLatency {
 		stdVerdict.Add(float64(result.Latency.Microseconds()))
 		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over the budget %v",
@@ -306,7 +306,7 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 			errMsg = fmt.Sprintf("cluster %s, %s test message latency %v over six standard deviation %v ms and mean is %v ms",
 				clusterName, testName, result.Latency, float64(stddev/1000.0), float64(mean/1000.0))
 		}
-		VerboseAlert(clusterName+"-pubsub-latency-stddev", errMsg, 24*time.Hour)
+		VerboseAlert(clusterName+"-pubsub-latency-stddev", errMsg, LogOnly)
 		// standard deviation does not generate alerts
 	} else {
 		log.Infof("succeeded to sent %d messages to topic %s on %s test cluster %s",
