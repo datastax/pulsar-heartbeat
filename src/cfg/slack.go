@@ -46,6 +46,11 @@ type AlertVerbosity struct {
 	silenceWindow time.Duration
 }
 
+const (
+	// LogOnly only logs with no alert notification
+	LogOnly = -1 * time.Second
+)
+
 // MustAlert returns whether the silence window has expired since the last alert.
 func (av *AlertVerbosity) MustAlert() bool {
 	if time.Since(av.lastAlertTime) > av.silenceWindow {
@@ -58,6 +63,10 @@ var componentsAlert = util.NewSycMap()
 
 // VerboseAlert is able to reduce the verbosity to Slack channel
 func VerboseAlert(component, message string, silenceWindow time.Duration) {
+	if silenceWindow < 0 {
+		log.Errorf("Alert %s", message)
+		return
+	}
 	if GetConfig().SlackConfig.Verbose {
 		Alert(message)
 		return

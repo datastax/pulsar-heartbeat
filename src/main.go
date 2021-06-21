@@ -60,9 +60,6 @@ func main() {
 	exit := make(chan *complete)
 	config := cfg.GetConfig()
 
-	cfg.SetupAnalytics()
-
-	cfg.AnalyticsAppStart(util.AssignString(config.Name, "dev"))
 	cfg.MonitorK8sPulsarCluster()
 	cfg.RunInterval(cfg.PulsarTenants, util.TimeDuration(config.PulsarAdminConfig.IntervalSeconds, 120, time.Second))
 	cfg.RunInterval(cfg.StartHeartBeat, util.TimeDuration(config.OpsGenieConfig.IntervalSeconds, 240, time.Second))

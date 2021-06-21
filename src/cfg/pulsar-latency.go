@@ -289,16 +289,13 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 		errMsg := fmt.Sprintf("cluster %s, %s latency test Pulsar error: %v", clusterName, testName, err)
 		VerboseAlert(clusterName+"-latency-err", errMsg, 3*time.Minute)
 		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
-		AnalyticsLatencyReport(clusterName, testName, err.Error(), -1, false, false)
 	} else if !result.InOrderDelivery {
 		errMsg := fmt.Sprintf("cluster %s, %s test Pulsar message received out of order", clusterName, testName)
-		AnalyticsLatencyReport(clusterName, testName, "message delivery out of order", int(result.Latency.Milliseconds()), false, true)
-		VerboseAlert(clusterName+"-latency-outoforder", errMsg, 3*time.Minute)
+		VerboseAlert(clusterName+"-latency-out-of-order", errMsg, 3*time.Minute)
 	} else if result.Latency > expectedLatency {
 		stdVerdict.Add(float64(result.Latency.Microseconds()))
 		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over the budget %v",
 			clusterName, testName, result.Latency, expectedLatency)
-		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, false)
 		VerboseAlert(clusterName+"-latency", errMsg, 3*time.Minute)
 		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
 	} else if stddev, mean, within6Sigma := stdVerdict.Push(float64(result.Latency.Microseconds())); !within6Sigma && stddev > 0 && mean > 0 {
@@ -309,12 +306,11 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 			errMsg = fmt.Sprintf("cluster %s, %s test message latency %v over six standard deviation %v ms and mean is %v ms",
 				clusterName, testName, result.Latency, float64(stddev/1000.0), float64(mean/1000.0))
 		}
-		log.Warnf("%s %s", clusterName+"-latency-stddev", errMsg)
+		VerboseAlert(clusterName+"-pubsub-latency-stddev", errMsg, LogOnly)
 		// standard deviation does not generate alerts
 	} else {
 		log.Infof("succeeded to sent %d messages to topic %s on %s test cluster %s",
 			len(payloads), topicCfg.TopicName, testName, topicCfg.PulsarURL)
-		AnalyticsLatencyReport(clusterName, testName, "", int(result.Latency.Milliseconds()), true, true)
 		ClearIncident(clusterName)
 	}
 	if result.Latency < failedLatency {
