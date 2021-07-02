@@ -49,10 +49,10 @@ COPY --from=builder /root/config/kesque-pulsar.cert /etc/ssl/certs/ca-bundle.crt
 # Copy debug tools
 COPY --from=builder /go/bin/gops /home/user/gops
 RUN mkdir /home/user/run
-RUN chown -R user /home/user
+RUN chown -R user:0 /home/user && chmod g=u /home/user
 USER user
 WORKDIR /home/user
+ENV HOME=/home/user
 ENV PATH=/home/user/bin:$PATH
 ENV XDG_RUNTIME_DIR=/home/user/run
-
 ENTRYPOINT ./pulsar-heartbeat ./runtime.yml
