@@ -55,4 +55,5 @@ WORKDIR /home/user
 ENV HOME=/home/user
 ENV PATH=/home/user/bin:$PATH
 ENV XDG_RUNTIME_DIR=/home/user/run
-ENTRYPOINT ./pulsar-heartbeat ./runtime.yml
+ENV PULSAR_OPS_MONITOR_CFG=/config/runtime.yml
+ENTRYPOINT ./pulsar-heartbeat
