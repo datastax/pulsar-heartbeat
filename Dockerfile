@@ -36,21 +36,21 @@ RUN go get github.com/google/gops
 # Start a new stage from scratch
 #
 FROM alpine:3.7
-RUN adduser -u 1000 -D user
-COPY --from=proot /proot /home/user/.runrootless/runrootless-proot
-COPY --from=runc /runc /home/user/bin/runc
+RUN adduser -u 1000 -S user -G root
+COPY --from=proot --chown=1000:0 /proot /home/user/.runrootless/runrootless-proot
+COPY --from=runc --chown=1000:0 /runc /home/user/bin/runc
 
 RUN apk --no-cache add ca-certificates
-COPY --from=builder /root/src/pulsar-heartbeat /home/user
+COPY --from=builder --chown=1000:0 /root/src/pulsar-heartbeat /home/user
 
 # a kesque cert but it can overwritten by mounting the same path ca-bundle.crt
-COPY --from=builder /root/config/kesque-pulsar.cert /etc/ssl/certs/ca-bundle.crt
+COPY --from=builder --chown=1000:0 /root/config/kesque-pulsar.cert /etc/ssl/certs/ca-bundle.crt
 
 # Copy debug tools
-COPY --from=builder /go/bin/gops /home/user/gops
-RUN mkdir /home/user/run
-RUN chown -R user:0 /home/user && chmod g=u /home/user
-USER user
+COPY --from=builder --chown=1000:0 /go/bin/gops /home/user/gops
+RUN mkdir /home/user/run && chmod g=u /home/user/run
+RUN chmod g=u /home/user
+USER 1000:0
 WORKDIR /home/user
 ENV HOME=/home/user
 ENV PATH=/home/user/bin:$PATH
