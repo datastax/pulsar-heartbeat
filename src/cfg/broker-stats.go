@@ -255,11 +255,11 @@ func TestBrokers(topicCfg TopicCfg) error {
 
 	if failedBrokers > 0 {
 		errMsg := fmt.Sprintf("cluster %s has %d unhealthy brokers, error message: %v", name, failedBrokers, err)
-		VerboseAlert(name+"-broker", errMsg, 3*time.Minute)
+		log.Errorf(errMsg)
 		ReportIncident(name, name, "brokers are unhealthy reported by pulsar-heartbeat", errMsg, &topicCfg.AlertPolicy)
 	} else if err != nil {
 		errMsg := fmt.Sprintf("cluster %s Pulsar brokers test failed, error message: %v", name, err)
-		VerboseAlert(name+"-broker", errMsg, 3*time.Minute)
+		log.Errorf(errMsg)
 		ReportIncident(name, name, "brokers test error reported by pulsar-heartbeat", errMsg, &topicCfg.AlertPolicy)
 	} else {
 		statsLog.Infof("%s broker test has successfully passed", name)

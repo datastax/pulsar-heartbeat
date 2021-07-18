@@ -137,6 +137,10 @@ func (t *IncidentAlertPolicy) report(component, msg, desc string) bool {
 		t.Alerts = make(map[time.Time]bool)
 		return true
 	}
+	if t.Limit > 0 && t.Counters+1 >= t.Limit {
+		// pre-alert before an incident could be created next time
+		VerboseAlert(component, msg, 10*time.Minute)
+	}
 
 	windowCounts := 0
 	for v := range t.Alerts {
@@ -210,6 +214,7 @@ func ReportIncident(component, alias, msg, desc string, eval *AlertPolicyCfg) {
 
 // ClearIncident clears an incident
 func ClearIncident(component string) {
+	Alert(fmt.Sprintf("resolve incident on component %s", component))
 	RemoveIncident(component)
 
 	incidentTrackersLock.Lock()
@@ -240,6 +245,8 @@ func NewIncident(component, alias, msg, desc, priority string) Incident {
 
 // CreateIncident creates incident
 func CreateIncident(component, alias, msg, desc, priority string) {
+	Alert(fmt.Sprintf("report incident as pager escalation, component %s, alias %s, message %s, description %s",
+		component, alias, msg, desc))
 	genieKey := GetConfig().OpsGenieConfig.AlertKey
 	if genieKey != "" {
 		err := CreateOpsGenieAlert(NewIncident(component, alias, msg, desc, priority), genieKey)
@@ -314,8 +321,6 @@ func opsGenieHTTP(method, endpoint, genieKey string, payload *bytes.Buffer) (*ht
 
 // CreateOpsGenieAlert creates an OpsGenie alert
 func CreateOpsGenieAlert(msg Incident, genieKey string) error {
-	Alert(fmt.Sprintf("report incident as pager escalation %v", msg))
-
 	buf, err := json.Marshal(msg)
 	if err != nil {
 		return err

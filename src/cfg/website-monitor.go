@@ -23,11 +23,11 @@ package cfg
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/antonmedv/expr"
+	"github.com/apex/log"
 	"github.com/datastax/pulsar-heartbeat/src/util"
 	"github.com/hashicorp/go-retryablehttp"
 )
@@ -90,9 +90,9 @@ func monitorSite(site SiteCfg) error {
 func mon(site SiteCfg) {
 	err := monitorSite(site)
 	if err != nil {
-		errMsg := fmt.Sprintf("site monitoring %s error: %v", site.URL, err)
+		errMsg := fmt.Sprintf("url monitoring %s error: %v", site.URL, err)
 		title := fmt.Sprintf("persisted %s endpoint failure", site.Name)
-		VerboseAlert(site.Name+"-site-monitor", errMsg, 3*time.Minute)
+		log.Errorf(errMsg)
 		ReportIncident(site.Name, site.Name, title, errMsg, &site.AlertPolicy)
 	} else {
 		ClearIncident(site.Name)
@@ -102,10 +102,9 @@ func mon(site SiteCfg) {
 // MonitorSites monitors a list of sites
 func MonitorSites() {
 	sites := GetConfig().SitesConfig.Sites
-	log.Println(sites)
 
 	for _, site := range sites {
-		log.Println(site.URL)
+		log.Infof("monitor and evaluate url %s", site.URL)
 		go func(s SiteCfg) {
 			interval := util.TimeDuration(s.IntervalSeconds, 120, time.Second)
 			ticker := time.NewTicker(interval)

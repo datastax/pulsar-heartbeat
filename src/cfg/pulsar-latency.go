@@ -287,16 +287,16 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 	log.Infof("cluster %s has message latency %v", clusterName, result.Latency)
 	if err != nil {
 		errMsg := fmt.Sprintf("cluster %s, %s latency test Pulsar error: %v", clusterName, testName, err)
-		VerboseAlert(clusterName+"-latency-err", errMsg, 3*time.Minute)
+		log.Errorf(errMsg)
 		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
 	} else if !result.InOrderDelivery {
 		errMsg := fmt.Sprintf("cluster %s, %s test Pulsar message received out of order", clusterName, testName)
-		VerboseAlert(clusterName+"-latency-out-of-order", errMsg, 3*time.Minute)
+		log.Errorf(errMsg)
 	} else if result.Latency > expectedLatency {
 		stdVerdict.Add(float64(result.Latency.Microseconds()))
 		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over the budget %v",
 			clusterName, testName, result.Latency, expectedLatency)
-		VerboseAlert(clusterName+"-latency", errMsg, 3*time.Minute)
+		log.Errorf(errMsg)
 		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
 	} else if stddev, mean, within6Sigma := stdVerdict.Push(float64(result.Latency.Microseconds())); !within6Sigma && stddev > 0 && mean > 0 {
 		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v μs over six standard deviation %v μs and mean is %v μs",
@@ -306,8 +306,7 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 			errMsg = fmt.Sprintf("cluster %s, %s test message latency %v over six standard deviation %v ms and mean is %v ms",
 				clusterName, testName, result.Latency, float64(stddev/1000.0), float64(mean/1000.0))
 		}
-		VerboseAlert(clusterName+"-pubsub-latency-stddev", errMsg, LogOnly)
-		// standard deviation does not generate alerts
+		log.Errorf(errMsg)
 	} else {
 		log.Infof("succeeded to sent %d messages to topic %s on %s test cluster %s",
 			len(payloads), topicCfg.TopicName, testName, topicCfg.PulsarURL)
