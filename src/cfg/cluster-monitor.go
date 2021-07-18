@@ -81,8 +81,8 @@ func EvaluateClusterHealth(client *k8s.Client) error {
 	if status.Status != k8s.OK {
 		errMsg := fmt.Sprintf("cluster %s, k8s pulsar cluster status is unhealthy, error message %s", cluster, desc)
 		if status.Status == k8s.TotalDown {
-			VerboseAlert(cluster, errMsg, 3*time.Minute)
-			ReportIncident(cluster, cluster, "kubernete cluster is down, reported by pulsar-heartbeat", errMsg, &k8sCfg.AlertPolicy)
+			log.Errorf("Kubernetes cluster is down. " + errMsg)
+			ReportIncident(cluster, cluster, "Kubernetes cluster is down, reported by pulsar-heartbeat", errMsg, &k8sCfg.AlertPolicy)
 		}
 	} else {
 		ClearIncident(cluster)
