@@ -214,7 +214,6 @@ func ReportIncident(component, alias, msg, desc string, eval *AlertPolicyCfg) {
 
 // ClearIncident clears an incident
 func ClearIncident(component string) {
-	Alert(fmt.Sprintf("resolve incident on component %s", component))
 	RemoveIncident(component)
 
 	incidentTrackersLock.Lock()
