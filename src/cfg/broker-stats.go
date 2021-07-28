@@ -153,14 +153,20 @@ func BrokerTopicsQuery(brokerBaseURL, token string) ([]string, error) {
 
 // ConnectBrokerHealthcheckTopic reads the latest messages off broker's healthcheck topic
 func ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL, token string, completeChan chan error) {
+	// "persistent://pulsar/{cluster}/10.244.7.85:8080/healthcheck"
+	brokerAddr := util.SingleSlashJoin(strings.ReplaceAll(brokerURL, "http://", ""), "healthcheck")
+	defer func() {
+		// the channel has been closed by the main EvaluateBrokers
+		if recover() != nil {
+			log.Errorf("cluster %s individual broker %s test timed out", clusterName, brokerAddr)
+		}
+	}()
 	client, err := GetPulsarClient(pulsarURL, token)
 	if err != nil {
 		completeChan <- err
 		return
 	}
 
-	// "persistent://pulsar/toronto-do/10.244.7.85:8080/healthcheck"
-	brokerAddr := util.SingleSlashJoin(strings.ReplaceAll(brokerURL, "http://", ""), "healthcheck")
 	topicName := "persistent://pulsar/" + clusterName + "/" + brokerAddr
 	reader, err := client.CreateReader(pulsar.ReaderOptions{
 		Topic:          topicName,
