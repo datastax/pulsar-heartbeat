@@ -43,9 +43,6 @@ COPY --from=runc --chown=1000:0 /runc /home/user/bin/runc
 RUN apk --no-cache add ca-certificates
 COPY --from=builder --chown=1000:0 /root/src/pulsar-heartbeat /home/user
 
-# a kesque cert but it can overwritten by mounting the same path ca-bundle.crt
-COPY --from=builder --chown=1000:0 /root/config/kesque-pulsar.cert /etc/ssl/certs/ca-bundle.crt
-
 # Copy debug tools
 COPY --from=builder --chown=1000:0 /go/bin/gops /home/user/gops
 RUN mkdir /home/user/run && chmod g=u /home/user/run

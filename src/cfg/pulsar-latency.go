@@ -69,11 +69,12 @@ func GetPulsarClient(pulsarURL, tokenStr string) (pulsar.Client, error) {
 		}
 
 		if strings.HasPrefix(pulsarURL, "pulsar+ssl://") {
-			trustStore := util.AssignString(GetConfig().TrustStore, "/etc/ssl/certs/ca-bundle.crt")
-			if trustStore == "" {
-				return nil, fmt.Errorf("fatal error: missing trustStore while pulsar+ssl tls is enabled")
+			trustStore := GetConfig().TrustStore
+			if trustStore != "" {
+				clientOpt.TLSTrustCertsFilePath = trustStore
+			} else {
+				log.Warn("missing trustStore while pulsar+ssl tls is enabled")
 			}
-			clientOpt.TLSTrustCertsFilePath = trustStore
 		}
 
 		pulsarClient, err := pulsar.NewClient(clientOpt)
@@ -325,7 +326,7 @@ func expectedMessage(payload, expected string) string {
 }
 
 func testPartitionTopic(clusterName, token string, cfg TopicCfg) {
-	trustStore := util.AssignString(cfg.TrustStore, GetConfig().TrustStore, "/etc/ssl/certs/ca-bundle.crt")
+	trustStore := util.AssignString(cfg.TrustStore, GetConfig().TrustStore)
 	testName := "partition-topics-test"
 	component := clusterName + "-" + testName
 	pt, err := getPartition(cfg, token, trustStore)
