@@ -20,7 +20,6 @@ require (
 	github.com/imdario/mergo v0.3.6 // indirect
 	github.com/klauspost/compress v1.11.3 // indirect
 	github.com/linkedin/goavro/v2 v2.10.0 // indirect
-	github.com/newrelic/go-insights v1.0.3
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.8.0
@@ -30,7 +29,7 @@ require (
 	golang.org/x/crypto v0.0.0-20201208171446-5f87f3452ae9 // indirect
 	golang.org/x/net v0.0.0-20201209123823-ac852fbbde11 // indirect
 	golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5 // indirect
-	golang.org/x/sys v0.0.0-20201207223542-d4d67f95c62d // indirect
+	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
 	golang.org/x/term v0.0.0-20201207232118-ee85cb95a76b // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	k8s.io/api v0.18.5
