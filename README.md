@@ -66,10 +66,10 @@ $ docker-compose up
 ### Docker example
 The runtime.yml/yaml or runtime.json file must be mounted to /config/runtime.yml as the default configuration path.
 
-Run docker container with Pulsar CA certificate and expose Prometheus metrics for collection.
+Run docker container that exposes Prometheus metrics for collection.
 
 ``` bash
-$ docker run -d -it -v $HOME/go/src/github.com/datastax/pulsar-heartbeat/config/runtime.yml:/config/runtime.yml -v /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-bundle.crt -p 8080:8080 --name=pulsar-heartbeat datastax/pulsar-heartbeat:latest
+$ docker run -d -it -v  $HOME/go/src/github.com/datastax/pulsar-heartbeat/config/runtime-astra.yml:/config/runtime.yml -p 8080:8080 --name=pulsar-heartbeat datastax/pulsar-heartbeat:latest
 ```
 
 ## Helm chart
