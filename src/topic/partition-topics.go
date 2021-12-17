@@ -183,12 +183,13 @@ func (pt *PartitionTopics) TestPartitionTopic(client pulsar.Client) (time.Durati
 	partitionTopicSuffix := "-partition-"
 	// prepare the message
 	message := fmt.Sprintf("partition topic test message %v", time.Now())
+	receiveTimeout := 60 * time.Second
 
 	// start multiple consumers and listens to individual partition topics
 	for i := 0; i < pt.NumberOfPartitions; i++ {
 		topicName := pt.TopicFullname + partitionTopicSuffix + strconv.Itoa(i)
 		pt.log.Infof("subscribe to partition topic %s wait on message %s", topicName, message)
-		go util.VerifyMessageByPulsarConsumer(client, topicName, message, completeChan)
+		go util.VerifyMessageByPulsarConsumer(client, topicName, message, receiveTimeout, completeChan)
 	}
 
 	pt.log.Infof("create a topic producer %s", pt.TopicFullname)
@@ -233,7 +234,7 @@ func (pt *PartitionTopics) TestPartitionTopic(client pulsar.Client) (time.Durati
 
 	receivedCounter := 0
 	successfulCounter := 0
-	ticker := time.NewTicker(60 * time.Second)
+	ticker := time.NewTicker(receiveTimeout)
 	defer ticker.Stop()
 	for receivedCounter < pt.NumberOfPartitions {
 		select {
