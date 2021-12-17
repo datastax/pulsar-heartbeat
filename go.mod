@@ -5,8 +5,8 @@ go 1.15
 require (
 	github.com/PagerDuty/go-pagerduty v1.3.0
 	github.com/antonmedv/expr v1.8.8
-	github.com/apache/pulsar-client-go v0.4.0-candidate-1
-	github.com/apache/pulsar-client-go/oauth2 v0.0.0-20201202064457-9fe66edefe0d // indirect
+	github.com/apache/pulsar-client-go v0.7.1-0.20211210071253-d0d5d0ae4037
+	github.com/apache/pulsar-client-go/oauth2 v0.0.0-20211210071253-d0d5d0ae4037 // indirect
 	github.com/apex/log v1.9.0
 	github.com/danieljoos/wincred v1.1.0 // indirect
 	github.com/dvsekhvalnov/jose2go v0.0.0-20201001154944-b09cfaf05951 // indirect
@@ -22,16 +22,11 @@ require (
 	github.com/linkedin/goavro/v2 v2.10.0 // indirect
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.8.0
-	github.com/prometheus/common v0.15.0 // indirect
+	github.com/prometheus/client_golang v1.11.0
 	github.com/sirupsen/logrus v1.7.0 // indirect
-	github.com/yahoo/athenz v1.9.25 // indirect
 	golang.org/x/crypto v0.0.0-20201208171446-5f87f3452ae9 // indirect
-	golang.org/x/net v0.0.0-20201209123823-ac852fbbde11 // indirect
-	golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5 // indirect
 	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
 	golang.org/x/term v0.0.0-20201207232118-ee85cb95a76b // indirect
-	google.golang.org/appengine v1.6.7 // indirect
 	k8s.io/api v0.18.5
 	k8s.io/apimachinery v0.18.5
 	k8s.io/client-go v0.18.5
