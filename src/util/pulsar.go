@@ -25,6 +25,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/apache/pulsar-client-go/pulsar"
@@ -40,7 +41,7 @@ type ConsumerResult struct {
 }
 
 // VerifyMessageByPulsarConsumer instantiates a Pulsar consumer and verifies an expected message
-func VerifyMessageByPulsarConsumer(client pulsar.Client, topicName, expectedMessage string, receiveTimeout time.Duration, completeChan chan *ConsumerResult) error {
+func VerifyMessageByPulsarConsumer(client pulsar.Client, topicName, expectedMessage string, receiveTimeout time.Duration, wg *sync.WaitGroup, completeChan chan *ConsumerResult) error {
 	topicParts := strings.Split(topicName, "/")
 	subscriptionName := "partition-sub" + topicParts[len(topicParts)-1]
 	consumer, err := client.Subscribe(pulsar.ConsumerOptions{
@@ -54,7 +55,11 @@ func VerifyMessageByPulsarConsumer(client pulsar.Client, topicName, expectedMess
 		log.Errorf("failed to created partition topic consumer, error: %v", err)
 		return err
 	}
-	defer consumer.Close()
+	wg.Add(1)
+	defer func() {
+		wg.Done()
+		consumer.Close()
+	}()
 
 	receivedCount := 0
 	start := time.Now()
@@ -66,10 +71,6 @@ func VerifyMessageByPulsarConsumer(client pulsar.Client, topicName, expectedMess
 		receivedCount++
 		msg, err := consumer.Receive(cCtx)
 		if err != nil {
-			if time.Since(start) >= receiveTimeout {
-				log.Errorf("consumer received error over timeout, error %v", err)
-				return nil
-			}
 			completeChan <- &ConsumerResult{
 				Err: fmt.Errorf("consumer Receive() error: %v", err),
 			}
@@ -77,10 +78,6 @@ func VerifyMessageByPulsarConsumer(client pulsar.Client, topicName, expectedMess
 		}
 		consumer.Ack(msg)
 		if expectedMessage == string(msg.Payload()) {
-			if time.Since(start) >= receiveTimeout {
-				log.Errorf("consumer received message over timeout")
-				return nil
-			}
 			log.Infof("expected message received by %s", topicName)
 			completeChan <- &ConsumerResult{
 				InOrderDelivery: true,

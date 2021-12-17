@@ -30,6 +30,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/apache/pulsar-client-go/pulsar"
@@ -178,19 +179,16 @@ func (pt *PartitionTopics) TestPartitionTopic(client pulsar.Client) (time.Durati
 
 	// notify the main thread with the latency to complete the exit of all consumers
 	completeChan := make(chan *util.ConsumerResult, pt.NumberOfPartitions)
-	defer close(completeChan)
+	var wg sync.WaitGroup
+	defer func() {
+		wg.Wait() // only close channel after the consumers processed messages or timedout
+		close(completeChan)
+	}()
 
 	partitionTopicSuffix := "-partition-"
 	// prepare the message
 	message := fmt.Sprintf("partition topic test message %v", time.Now())
 	receiveTimeout := 60 * time.Second
-
-	// start multiple consumers and listens to individual partition topics
-	for i := 0; i < pt.NumberOfPartitions; i++ {
-		topicName := pt.TopicFullname + partitionTopicSuffix + strconv.Itoa(i)
-		pt.log.Infof("subscribe to partition topic %s wait on message %s", topicName, message)
-		go util.VerifyMessageByPulsarConsumer(client, topicName, message, receiveTimeout, completeChan)
-	}
 
 	pt.log.Infof("create a topic producer %s", pt.TopicFullname)
 	// create a pulsar producer
@@ -205,6 +203,13 @@ func (pt *PartitionTopics) TestPartitionTopic(client pulsar.Client) (time.Durati
 		producer.Close()
 		log.Infof("close producer name %s against topic name %s", producer.Name(), producer.Topic())
 	}()
+
+	// start multiple consumers and listens to individual partition topics
+	for i := 0; i < pt.NumberOfPartitions; i++ {
+		topicName := pt.TopicFullname + partitionTopicSuffix + strconv.Itoa(i)
+		pt.log.Infof("subscribe to partition topic %s wait on message %s", topicName, message)
+		go util.VerifyMessageByPulsarConsumer(client, topicName, message, receiveTimeout, &wg, completeChan)
+	}
 
 	// producer sends multiple messages
 	start := time.Now()
