@@ -220,7 +220,6 @@ func PubSubLatency(clusterName, tokenStr, uri, topicName, outputTopic, msgPrefix
 			}
 
 			log.Infof("successfully published %v", sentTime)
-			CalculateDowntime(clusterName)
 		})
 	}
 
@@ -289,7 +288,9 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 	if err != nil {
 		errMsg := fmt.Sprintf("cluster %s, %s latency test Pulsar error: %v", clusterName, testName, err)
 		log.Errorf(errMsg)
-		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
+		if ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy) && isDowntimeReporting(topicCfg) {
+			PromGauge(PubSubDowntimeGaugeOpt(), clusterName, float64(time.Duration(topicCfg.IntervalSeconds)))
+		}
 	} else if !result.InOrderDelivery {
 		errMsg := fmt.Sprintf("cluster %s, %s test Pulsar message received out of order", clusterName, testName)
 		log.Errorf(errMsg)
@@ -298,7 +299,9 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v over the budget %v",
 			clusterName, testName, result.Latency, expectedLatency)
 		log.Errorf(errMsg)
-		ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy)
+		if ReportIncident(clusterName, clusterName, "persisted latency test failure", errMsg, &topicCfg.AlertPolicy) && isDowntimeReporting(topicCfg) {
+			PromGauge(PubSubDowntimeGaugeOpt(), clusterName, float64(time.Duration(topicCfg.IntervalSeconds)))
+		}
 	} else if stddev, mean, within6Sigma := stdVerdict.Push(float64(result.Latency.Microseconds())); !within6Sigma && stddev > 0 && mean > 0 {
 		errMsg := fmt.Sprintf("cluster %s, %s test message latency %v μs over six standard deviation %v μs and mean is %v μs",
 			clusterName, testName, result.Latency.Microseconds(), stddev, mean)
@@ -312,10 +315,17 @@ func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
 		log.Infof("succeeded to sent %d messages to topic %s on %s test cluster %s",
 			len(payloads), topicCfg.TopicName, testName, topicCfg.PulsarURL)
 		ClearIncident(clusterName)
+		if isDowntimeReporting(topicCfg) {
+			PromGauge(PubSubDowntimeGaugeOpt(), clusterName, 0) // report gauge no downtime
+		}
 	}
 	if result.Latency < failedLatency {
 		PromLatencySum(GetGaugeType(topicCfg.Name), clusterName, result.Latency)
 	}
+}
+
+func isDowntimeReporting(cfg TopicCfg) bool {
+	return !cfg.DowntimeTrackerDisabled && cfg.NumberOfPartitions == 1 && cfg.ClusterName != ""
 }
 
 func expectedMessage(payload, expected string) string {

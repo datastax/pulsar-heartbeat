@@ -105,21 +105,22 @@ type PulsarAdminRESTCfg struct {
 
 // TopicCfg is topic configuration
 type TopicCfg struct {
-	Name               string         `json:"name"`
-	ClusterName        string         `json:"clusterName"` // used for broker monitoring if specified
-	Token              string         `json:"token"`
-	TrustStore         string         `json:"trustStore"`
-	NumberOfPartitions int            `json:"numberOfPartitions"`
-	LatencyBudgetMs    int            `json:"latencyBudgetMs"`
-	PulsarURL          string         `json:"pulsarUrl"`
-	AdminURL           string         `json:"adminUrl"`
-	TopicName          string         `json:"topicName"`
-	OutputTopic        string         `json:"outputTopic"`
-	IntervalSeconds    int            `json:"intervalSeconds"`
-	ExpectedMsg        string         `json:"expectedMsg"`
-	PayloadSizes       []string       `json:"payloadSizes"`
-	NumOfMessages      int            `json:"numberOfMessages"`
-	AlertPolicy        AlertPolicyCfg `json:"AlertPolicy"`
+	Name                    string         `json:"name"`
+	ClusterName             string         `json:"clusterName"` // used for broker monitoring if specified
+	Token                   string         `json:"token"`
+	TrustStore              string         `json:"trustStore"`
+	NumberOfPartitions      int            `json:"numberOfPartitions"`
+	LatencyBudgetMs         int            `json:"latencyBudgetMs"`
+	PulsarURL               string         `json:"pulsarUrl"`
+	AdminURL                string         `json:"adminUrl"`
+	TopicName               string         `json:"topicName"`
+	OutputTopic             string         `json:"outputTopic"`
+	IntervalSeconds         int            `json:"intervalSeconds"`
+	ExpectedMsg             string         `json:"expectedMsg"`
+	PayloadSizes            []string       `json:"payloadSizes"`
+	NumOfMessages           int            `json:"numberOfMessages"`
+	AlertPolicy             AlertPolicyCfg `json:"AlertPolicy"`
+	DowntimeTrackerDisabled bool           `json:"downtimeTrackerDisabled"`
 }
 
 // WsConfig is configuration to monitor WebSocket pub sub latency

@@ -54,12 +54,6 @@ var (
 	// lock for incidents map
 	incidentsLock = &sync.RWMutex{}
 
-	// TODO: this map is not thread safe.
-	// track the downtime, since downtime won't be calculated when producing message works
-	// it has different definition than incident
-	// this is only applicable when Pulsar Monitor is deployed within a Pulsar cluster
-	downtimeTracker = make(map[string]incidentRecord)
-
 	// tracks incident to determine whether real alerting is required
 	// key is the component name
 	incidentTrackers     = make(map[string]*IncidentAlertPolicy)
@@ -187,11 +181,11 @@ func trackIncident(component, msg, desc string, eval *AlertPolicyCfg) bool {
 	return rc
 }
 
-// ReportIncident reports an incident.
-func ReportIncident(component, alias, msg, desc string, eval *AlertPolicyCfg) {
+// ReportIncident reports an incident return bool indicate an incident is created or not.
+func ReportIncident(component, alias, msg, desc string, eval *AlertPolicyCfg) bool {
 	if eval.Ceiling > 0 && trackIncident(component, msg, desc, eval) {
 		CreateIncident(component, alias, msg, desc, "P2")
-		return
+		return true
 	}
 
 	count := 0
@@ -209,7 +203,9 @@ func ReportIncident(component, alias, msg, desc string, eval *AlertPolicyCfg) {
 
 	if count > 2 {
 		CreateIncident(component, alias, msg, desc, "P2")
+		return true
 	}
+	return false
 }
 
 // ClearIncident clears an incident
@@ -259,37 +255,26 @@ func CreateIncident(component, alias, msg, desc, priority string) {
 
 // RemoveIncident removes an existing incident
 func RemoveIncident(component string) {
-	incidentsLock.RLock()
+	incidentsLock.Lock()
 	record, ok := incidents[component]
-	incidentsLock.RUnlock()
+	delete(incidents, component)
+	incidentsLock.Unlock()
 
 	if ok {
-		incidentsLock.Lock()
-		delete(incidents, component)
-		incidentsLock.Unlock()
-
-		downtimeDuration := time.Since(record.createdAt)
-		PromLatencySum(PubSubDowntimeGaugeOpt(), component, downtimeDuration)
-
 		if record.alertID == "" {
 			log.Errorf("%s unable to identify alert with request id %s for auto clear operation", component, record.requestID)
 			return
 		}
 		log.Infof("auto record alertID %v", record)
 		genieKey := GetConfig().OpsGenieConfig.AlertKey
-		err := CloseOpsGenieAlert(component, record.alertID, genieKey)
-		if err != nil {
-			Alert(fmt.Sprintf("from %s Opsgenie remove incident error %v", component, err))
+		if genieKey != "" {
+			err := CloseOpsGenieAlert(component, record.alertID, genieKey)
+			if err != nil {
+				Alert(fmt.Sprintf("from %s Opsgenie remove incident error %v", component, err))
+			}
 		}
 
 		ResolvePDIncident(component, record.alertID, GetConfig().PagerDutyConfig.IntegrationKey)
-	}
-}
-
-// CalculateDowntime calculate downtime
-func CalculateDowntime(component string) {
-	if _, ok := downtimeTracker[component]; ok {
-		delete(downtimeTracker, component)
 	}
 }
 
@@ -356,7 +341,6 @@ func CreateOpsGenieAlert(msg Incident, genieKey string) error {
 	incidentsLock.Lock()
 	defer incidentsLock.Unlock()
 	incidents[msg.Entity] = incident
-	downtimeTracker[msg.Entity] = incident
 
 	// there is a delay when the alert is created by opsgenie, so we use retry
 	// time out has to be less than the latency time interval
