@@ -189,6 +189,21 @@ func TestIncidentAlertMovingWindowPolicy(t *testing.T) {
 	assert(t, !trackIncident("component3", "time out message", "save me description", &policy), "")
 }
 
+func TestIsDowntimeReporting(t *testing.T) {
+	topicCfg := TopicCfg{}
+	assert(t, !isDowntimeReporting(topicCfg), "")
+	topicCfg.NumberOfPartitions = 1
+	topicCfg.ClusterName = "cluster1"
+	assert(t, isDowntimeReporting(topicCfg), "")
+
+	topicCfg.NumberOfPartitions = 2
+	assert(t, !isDowntimeReporting(topicCfg), "")
+
+	topicCfg.NumberOfPartitions = 1
+	topicCfg.ClusterName = ""
+	assert(t, !isDowntimeReporting(topicCfg), "")
+}
+
 // assert fails the test if the condition is false.
 func assert(tb testing.TB, condition bool, msg string, v ...interface{}) {
 	if !condition {

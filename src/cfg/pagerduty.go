@@ -22,6 +22,9 @@
 package cfg
 
 import (
+	"errors"
+	"time"
+
 	pd "github.com/PagerDuty/go-pagerduty"
 	log "github.com/apex/log"
 )
@@ -33,31 +36,48 @@ const (
 )
 
 // CreatePDIncident creates PagerDuty incident
-func CreatePDIncident(component, alias, msg, pdIntegrationKey string) {
+func CreatePDIncident(component, alias, msg, pdIntegrationKey string) error {
 	payload := pd.V2Payload{
 		Summary:   component + ":" + msg,
 		Source:    "pulsar-heartbeat",
 		Severity:  "critical",
 		Component: component,
 	}
-	PdV2Event(trigger, alias, pdIntegrationKey, &payload)
+	pdResp, err := PdV2Event(trigger, alias, pdIntegrationKey, &payload)
+	if err != nil {
+		return err
+	}
+	if pdResp == nil {
+		return errors.New("empty pagerduty event update response")
+	}
+	incident := incidentRecord{
+		requestID: pdResp.DedupKey, // use dedupKey as a place holder
+		alertID:   alias,
+		createdAt: time.Now(),
+	}
+
+	incidentsLock.Lock()
+	defer incidentsLock.Unlock()
+	incidents[component] = incident
+	return nil
 }
 
 // ResolvePDIncident resolves PagerDuty incident
-func ResolvePDIncident(component, alias, pdIntegrationKey string) {
+func ResolvePDIncident(component, alias, pdIntegrationKey string) error {
 	payload := pd.V2Payload{
-		Summary:   component,
+		Summary:   component + ": auto resolved",
 		Source:    "pulsar-heartbeat",
 		Severity:  "critical",
 		Component: component,
 	}
-	PdV2Event(resolve, alias, pdIntegrationKey, &payload)
+	_, err := PdV2Event(resolve, alias, pdIntegrationKey, &payload)
+	return err
 }
 
 // PdV2Event is pd client
-func PdV2Event(action, dedupKey, routingKey string, payload *pd.V2Payload) {
+func PdV2Event(action, dedupKey, routingKey string, payload *pd.V2Payload) (*pd.V2EventResponse, error) {
 	if routingKey == "" {
-		return
+		return nil, nil
 	}
 	v2Event := pd.V2Event{
 		RoutingKey: routingKey,
@@ -71,4 +91,5 @@ func PdV2Event(action, dedupKey, routingKey string, payload *pd.V2Payload) {
 	} else {
 		log.Infof("PagerDuty V2Event sent with response - %v", resp)
 	}
+	return resp, err
 }
