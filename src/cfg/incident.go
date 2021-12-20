@@ -250,7 +250,12 @@ func CreateIncident(component, alias, msg, desc, priority string) {
 		}
 	}
 
-	CreatePDIncident(component, alias, msg, GetConfig().PagerDutyConfig.IntegrationKey)
+	if GetConfig().PagerDutyConfig.IntegrationKey != "" {
+		err := CreatePDIncident(component, alias, msg, GetConfig().PagerDutyConfig.IntegrationKey)
+		if err != nil {
+			Alert(fmt.Sprintf("from %s PagerDuty report incident error %v", component, err))
+		}
+	}
 }
 
 // RemoveIncident removes an existing incident
@@ -348,10 +353,12 @@ func CreateOpsGenieAlert(msg Incident, genieKey string) error {
 	return nil
 }
 
+// verify and get created alert's alertID for auto resolve purpose
 func getOpsGenieAlertIDRetry(entity, requestID, genieKey string, timeout time.Duration) {
 	start := time.Now()
+	waitDuration := 200 * time.Millisecond
 	for time.Since(start) < timeout {
-		time.Sleep(200 * time.Millisecond) //TODO: could have exponatial back off retry
+		time.Sleep(waitDuration)
 		alertID, err := getOpsGenieAlertID(requestID, genieKey)
 		if err == nil {
 			incidentsLock.Lock()
@@ -363,6 +370,7 @@ func getOpsGenieAlertIDRetry(entity, requestID, genieKey string, timeout time.Du
 			incidentsLock.Unlock()
 			return
 		}
+		waitDuration = waitDuration * 2
 	}
 	log.Errorf("%s unable to find alert with requestId %s", entity, requestID)
 }
