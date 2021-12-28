@@ -55,7 +55,7 @@ type MsgResult struct {
 
 // GetPulsarClient gets the pulsar client object
 // Note: the caller has to Close() the client object
-func GetPulsarClient(pulsarURL, tokenStr string) (pulsar.Client, error) {
+func GetPulsarClient(pulsarURL string, tokenSupplier func()(string,error)) (pulsar.Client, error) {
 	client, ok := clients[pulsarURL]
 	if !ok {
 		clientOpt := pulsar.ClientOptions{
@@ -64,8 +64,8 @@ func GetPulsarClient(pulsarURL, tokenStr string) (pulsar.Client, error) {
 			ConnectionTimeout: 30 * time.Second,
 		}
 
-		if tokenStr != "" {
-			clientOpt.Authentication = pulsar.NewAuthenticationToken(tokenStr)
+		if tokenSupplier != nil {
+			clientOpt.Authentication = pulsar.NewAuthenticationTokenFromSupplier(tokenSupplier)
 		}
 
 		if strings.HasPrefix(pulsarURL, "pulsar+ssl://") {
@@ -88,8 +88,8 @@ func GetPulsarClient(pulsarURL, tokenStr string) (pulsar.Client, error) {
 }
 
 // PubSubLatency the latency including successful produce and consume of a message
-func PubSubLatency(clusterName, tokenStr, uri, topicName, outputTopic, msgPrefix, expectedSuffix string, payloads [][]byte, maxPayloadSize int) (MsgResult, error) {
-	client, err := GetPulsarClient(uri, tokenStr)
+func PubSubLatency(clusterName string, tokenSupplier func()(string,error), uri, topicName, outputTopic, msgPrefix, expectedSuffix string, payloads [][]byte, maxPayloadSize int) (MsgResult, error) {
+	client, err := GetPulsarClient(uri, tokenSupplier)
 	if err != nil {
 		return MsgResult{Latency: failedLatency}, err
 	}
@@ -265,23 +265,23 @@ func TestTopicLatency(topicCfg TopicCfg) {
 		panic(err) //panic because this is a showstopper
 	}
 	clusterName := adminURL.Hostname()
-	token := util.AssignString(topicCfg.Token, GetConfig().Token)
+	tokenSupplier := util.TokenSupplierWithOverride(topicCfg.Token, Config.TokenSupplier())
 
 	if topicCfg.NumberOfPartitions < 2 {
-		testTopicLatency(clusterName, token, topicCfg)
+		testTopicLatency(clusterName, tokenSupplier, topicCfg)
 	} else {
-		testPartitionTopic(clusterName, token, topicCfg)
+		testPartitionTopic(clusterName, tokenSupplier, topicCfg)
 	}
 }
 
-func testTopicLatency(clusterName, token string, topicCfg TopicCfg) {
+func testTopicLatency(clusterName string, tokenSupplier func()(string,error), topicCfg TopicCfg) {
 	stdVerdict := util.GetStdBucket(clusterName)
 	expectedLatency := util.TimeDuration(topicCfg.LatencyBudgetMs, latencyBudget, time.Millisecond)
 	prefix := "messageid"
 	payloads, maxPayloadSize := AllMsgPayloads(prefix, topicCfg.PayloadSizes, topicCfg.NumOfMessages)
 	log.Infof("send %d messages to topic %s on cluster %s with latency budget %v, %v, %d",
 		len(payloads), topicCfg.TopicName, topicCfg.PulsarURL, expectedLatency, topicCfg.PayloadSizes, topicCfg.NumOfMessages)
-	result, err := PubSubLatency(clusterName, token, topicCfg.PulsarURL, topicCfg.TopicName, topicCfg.OutputTopic, prefix, topicCfg.ExpectedMsg, payloads, maxPayloadSize)
+	result, err := PubSubLatency(clusterName, tokenSupplier, topicCfg.PulsarURL, topicCfg.TopicName, topicCfg.OutputTopic, prefix, topicCfg.ExpectedMsg, payloads, maxPayloadSize)
 
 	testName := util.AssignString(topicCfg.Name, pubSubSubsystem)
 	log.Infof("cluster %s has message latency %v", clusterName, result.Latency)
@@ -335,17 +335,17 @@ func expectedMessage(payload, expected string) string {
 	return payload
 }
 
-func testPartitionTopic(clusterName, token string, cfg TopicCfg) {
+func testPartitionTopic(clusterName string, tokenSupplier func()(string,error), cfg TopicCfg) {
 	trustStore := util.AssignString(cfg.TrustStore, GetConfig().TrustStore)
 	testName := "partition-topics-test"
 	component := clusterName + "-" + testName
-	pt, err := getPartition(cfg, token, trustStore)
+	pt, err := getPartition(cfg, tokenSupplier, trustStore)
 	if err != nil {
 		errMsg := fmt.Sprintf("%s failed to create PartitionTopic test object, error: %v", component, err)
 		ReportIncident(component, component, "persisted failure to create partition topic test client", errMsg, &cfg.AlertPolicy)
 		return
 	}
-	pulsarClient, err := GetPulsarClient(cfg.PulsarURL, token)
+	pulsarClient, err := GetPulsarClient(cfg.PulsarURL, tokenSupplier)
 	if err != nil {
 		errMsg := fmt.Sprintf("cluster %s, %s failed create Pulsar Client with error: %v", component, testName, err)
 		Alert(errMsg)
@@ -372,11 +372,11 @@ func testPartitionTopic(clusterName, token string, cfg TopicCfg) {
 	}
 }
 
-func getPartition(cfg TopicCfg, token, trustStore string) (*topic.PartitionTopics, error) {
+func getPartition(cfg TopicCfg, tokenSupplier func()(string,error), trustStore string) (*topic.PartitionTopics, error) {
 	pt, ok := partitionTopics[cfg.TopicName]
 	if !ok {
 		var err error
-		pt, err = topic.NewPartitionTopic(cfg.PulsarURL, token, trustStore, cfg.TopicName, cfg.AdminURL, cfg.NumberOfPartitions)
+		pt, err = topic.NewPartitionTopic(cfg.PulsarURL, tokenSupplier, trustStore, cfg.TopicName, cfg.AdminURL, cfg.NumberOfPartitions)
 		if err != nil {
 			return nil, err
 		}
