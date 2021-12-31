@@ -4,6 +4,10 @@ prometheusConfig:
   exposeMetrics: true
 slackConfig:
   alertUrl: required
+tokenOAuthConfig:
+  ClientID: "example-client"
+  ClientSecret: "example-client-secret"
+  TokenURL: "<token-endpoint of oauth2 provider>"
 sitesConfig:
   sites:
 opsGenieConfig:
