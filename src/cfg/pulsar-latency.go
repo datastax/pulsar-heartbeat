@@ -265,7 +265,7 @@ func TestTopicLatency(topicCfg TopicCfg) {
 		panic(err) //panic because this is a showstopper
 	}
 	clusterName := adminURL.Hostname()
-	tokenSupplier := util.TokenSupplierWithOverride(topicCfg.Token, Config.TokenSupplier())
+	tokenSupplier := util.TokenSupplierWithOverride(topicCfg.Token, GetConfig().TokenSupplier())
 
 	if topicCfg.NumberOfPartitions < 2 {
 		testTopicLatency(clusterName, tokenSupplier, topicCfg)

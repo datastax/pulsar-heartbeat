@@ -199,7 +199,7 @@ func WsLatencyTest(producerURL, subscriptionURL string, tokenSupplier func()(str
 
 // TestWsLatency test all clusters' websocket pub sub latency
 func TestWsLatency(config WsConfig) {
-	tokenSupplier := util.TokenSupplierWithOverride(config.Token, Config.TokenSupplier())
+	tokenSupplier := util.TokenSupplierWithOverride(config.Token, GetConfig().TokenSupplier())
 	expectedLatency := util.TimeDuration(config.LatencyBudgetMs, 2*latencyBudget, time.Millisecond)
 
 	stdVerdict := util.GetStdBucket(config.Cluster)

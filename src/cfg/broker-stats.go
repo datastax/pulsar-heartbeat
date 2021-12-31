@@ -257,7 +257,7 @@ func TestBrokers(topicCfg TopicCfg) error {
 	}
 	name := topicCfg.ClusterName + "-brokers"
 
-	tokenSupplier := util.TokenSupplierWithOverride(topicCfg.Token, Config.TokenSupplier())
+	tokenSupplier := util.TokenSupplierWithOverride(topicCfg.Token, GetConfig().TokenSupplier())
 
 	intervalDuration := 10 * time.Second
 	if topicCfg.IntervalSeconds > 20 {

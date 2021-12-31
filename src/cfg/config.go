@@ -192,7 +192,7 @@ type Configuration struct {
 	tokenFunc		func()(string, error)
 }
 
-func (c Configuration) Init() {
+func (c *Configuration) Init() {
 	if len(c.Name) < 1 {
 		panic("a valid `name` in Configuration must be specified")
 	}
@@ -225,7 +225,7 @@ func (c Configuration) Init() {
 	}
 }
 
-func (c Configuration) TokenSupplier() func() (string, error) {
+func (c *Configuration) TokenSupplier() func() (string, error) {
 	return c.tokenFunc
 }
 
