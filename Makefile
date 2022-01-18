@@ -19,6 +19,13 @@ all: push
 #
 TAG ?= v0.0.7
 PREFIX ?= datastax/pulsar-heartbeat
+BUILD_DIR ?= bin
+
+build:
+	go build -o $(BUILD_DIR)/pulsar-heartbeat src/main.go
+
+test:
+	go test ./...
 
 container:
 	docker build -t $(PREFIX):$(TAG) .
@@ -29,4 +36,5 @@ push: container
 	docker push $(PREFIX):latest
 
 clean:
+	rm $(BUILD_DIR)/*
 	docker rmi $(PREFIX):$(TAG)
