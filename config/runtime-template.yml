@@ -1,18 +1,24 @@
+# This is a sample configuration for the Pulsar Heartbeat
+# For all configuration options, see ./src/cfg/config.go
 ---
+name: # Pulsar cluster name, required
+tokenFilePath: # path to pulsar jwt, takes precedence over token, if both present
+token: # pulsar jwt
+trustStore: # path to tls truststore
 prometheusConfig:
   port: ":8080"
   exposeMetrics: true
 slackConfig:
-  alertUrl: required
+  alertUrl: # required for slack integration to work
 sitesConfig:
   sites:
 opsGenieConfig:
   intervalSeconds: 180
   heartbeatKey: GenieKey key for heartbeat
   alertKey: GenieKey api key to generate alerts or incidents
-pulsarOpsConfig:
+pulsarAdminRestConfig:
   intervalSeconds: 120
-  masterToken: pulsar jwt required
+  Token: # pulsar jwt, required for pulsarAdminRestConfig to work
   clusters:
   - name: cluster1-azure
     url: https://cluster1.azure.kafkaesque.io:8964/
@@ -20,47 +26,33 @@ pulsarOpsConfig:
       Ceiling: 10
       MovingWindowSeconds: 30
       CeilingInMovingWindow: 10
-  - name: cluster2-aws
-    url: https://cluster2.aws.kafkaesque.io:8964/
-    alertPolicy:
-      Ceiling: 10
-      MovingWindowSeconds: 30
-      CeilingInMovingWindow: 10
-  - name: cluster3-gcp
-    url: https://cluster3.gcp.kafkaesque.io:8964/
-    alertPolicy:
-      Ceiling: 10
-      MovingWindowSeconds: 30
-      CeilingInMovingWindow: 10
-pulsarPerfConfig:
-  intervalSeconds: 120
-  token: ''
-  topicCfgs:
+pulsarTopicConfig:
   - latencyBudgetMs: 360
+    intervalSeconds: 60
     pulsarUrl: pulsar+ssl://cluster3.gcp.kafkaesque.io:6651
     topicName: persistent://tenant/ns2/reserved-cluster-monitoring
+    payloadSizes: [ 15B ]
+    numberOfMessages: 1
     alertPolicy:
       Ceiling: 30
       MovingWindowSeconds: 600
       CeilingInMovingWindow: 5
-  - latencyBudgetMs: 2400
-    pulsarUrl: pulsar+ssl://cluster2.aws.kafkaesque.io:6651
-    topicName: persistent://tenant/ns/reserved-cluster-monitoring
-    payloadSizes: ["200B"]
-    numberOfMessages: 1
-    alertPolicy:
-      Ceiling: 3
-      MovingWindowSeconds: 600
-      CeilingInMovingWindow: 5
-  - latencyBudgetMs: 1850
-    pulsarUrl: pulsar+ssl://cluster1.azure.kafkaesque.io:6651
-    topicName: persistent://tenant/ns/reserved-cluster-monitoring
-    alertPolicy:
-      Ceiling: 3
-      MovingWindowSeconds: 600
-      CeilingInMovingWindow: 5
-
-websocketConfig:
+analyticsConfig:
+  apiKey:
+  ingestionURL:
+  insightsWriteKey:
+  insightsAccountId: ""
+k8sConfig:
+  enabled: false
+  pulsarNamespace: default
+brokersConfig:
+  intervalSeconds: 45
+  inclusterRestURL: "http://pulsar-broker:8080"
+  alertPolicy:
+    Ceiling: 5
+    MovingWindowSeconds: 600
+    CeilingInMovingWindow: 8
+webSocketConfig:
   - latencyBudgetMs: 640
     name: websocket_cluster3_gcp
     intervalSeconds: 60
