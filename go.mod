@@ -35,4 +35,5 @@ require (
 )
 
 replace github.com/miekg/dns => github.com/miekg/dns v1.1.25
+
 replace github.com/aws/aws-sdk-go => github.com/aws/aws-sdk-go v1.34.0
