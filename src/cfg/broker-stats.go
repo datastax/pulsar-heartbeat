@@ -46,14 +46,20 @@ const (
 )
 
 // GetBrokers gets a list of brokers and ports
-func GetBrokers(restBaseURL, clusterName, token string) ([]string, error) {
+func GetBrokers(restBaseURL, clusterName string, tokenSupplier func()(string, error)) ([]string, error) {
 	brokersURL := util.SingleSlashJoin(restBaseURL, "admin/v2/brokers/"+clusterName)
 	newRequest, err := http.NewRequest(http.MethodGet, brokersURL, nil)
 	if err != nil {
 		return nil, err
 	}
 	newRequest.Header.Add("user-agent", "pulsar-heartbeat")
-	newRequest.Header.Add("Authorization", "Bearer "+token)
+	if tokenSupplier != nil {
+		token, err := tokenSupplier()
+		if err != nil {
+			return nil, err
+		}
+		newRequest.Header.Add("Authorization", "Bearer "+token)
+	}
 	client := &http.Client{
 		CheckRedirect: util.PreserveHeaderForRedirect,
 		Timeout:       10 * time.Second,
@@ -152,7 +158,7 @@ func BrokerTopicsQuery(brokerBaseURL, token string) ([]string, error) {
 }
 
 // ConnectBrokerHealthcheckTopic reads the latest messages off broker's healthcheck topic
-func ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL, token string, completeChan chan error) {
+func ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL string, tokenSupplier func()(string,error), completeChan chan error) {
 	// "persistent://pulsar/{cluster}/10.244.7.85:8080/healthcheck"
 	brokerAddr := util.SingleSlashJoin(strings.ReplaceAll(brokerURL, "http://", ""), "healthcheck")
 	defer func() {
@@ -161,7 +167,7 @@ func ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL, token stri
 			log.Errorf("cluster %s individual broker %s test timed out", clusterName, brokerAddr)
 		}
 	}()
-	client, err := GetPulsarClient(pulsarURL, token)
+	client, err := GetPulsarClient(pulsarURL, tokenSupplier)
 	if err != nil {
 		completeChan <- err
 		return
@@ -201,8 +207,8 @@ func ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL, token stri
 }
 
 // EvaluateBrokers evaluates all brokers' health
-func EvaluateBrokers(urlPrefix, clusterName, pulsarURL, token string, duration time.Duration) (int, error) {
-	brokers, err := GetBrokers(urlPrefix, clusterName, token)
+func EvaluateBrokers(urlPrefix, clusterName, pulsarURL string, tokenSupplier func()(string,error), duration time.Duration) (int, error) {
+	brokers, err := GetBrokers(urlPrefix, clusterName, tokenSupplier)
 	if err != nil {
 		return 0, err
 	}
@@ -215,7 +221,7 @@ func EvaluateBrokers(urlPrefix, clusterName, pulsarURL, token string, duration t
 	defer close(completeChan)
 
 	for _, brokerURL := range brokers {
-		go ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL, token, completeChan)
+		go ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL, tokenSupplier, completeChan)
 	}
 
 	receivedCounter := 0
@@ -251,13 +257,13 @@ func TestBrokers(topicCfg TopicCfg) error {
 	}
 	name := topicCfg.ClusterName + "-brokers"
 
-	token := util.AssignString(topicCfg.Token, GetConfig().Token)
+	tokenSupplier := util.TokenSupplierWithOverride(topicCfg.Token, GetConfig().TokenSupplier())
 
 	intervalDuration := 10 * time.Second
 	if topicCfg.IntervalSeconds > 20 {
 		intervalDuration = time.Duration(topicCfg.IntervalSeconds/2) * time.Second
 	}
-	failedBrokers, err := EvaluateBrokers(topicCfg.AdminURL, topicCfg.ClusterName, topicCfg.PulsarURL, token, intervalDuration)
+	failedBrokers, err := EvaluateBrokers(topicCfg.AdminURL, topicCfg.ClusterName, topicCfg.PulsarURL, tokenSupplier, intervalDuration)
 
 	if failedBrokers > 0 {
 		errMsg := fmt.Sprintf("cluster %s has %d unhealthy brokers, error message: %v", name, failedBrokers, err)

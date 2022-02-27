@@ -44,7 +44,7 @@ import (
 type PartitionTopics struct {
 	NumberOfPartitions int
 	PulsarURL          string
-	Token              string
+	TokenSupplier      func()(string, error)
 	TrustStore         string
 	Tenant             string
 	Namespace          string
@@ -55,7 +55,7 @@ type PartitionTopics struct {
 }
 
 // NewPartitionTopic creates a PartitionTopic test object
-func NewPartitionTopic(url, token, trustStore, topicFn, adminURL string, numOfPartitions int) (*PartitionTopics, error) {
+func NewPartitionTopic(url string, tokenSupplier func()(string,error), trustStore, topicFn, adminURL string, numOfPartitions int) (*PartitionTopics, error) {
 	isPersistent, tenant, ns, topic, err := util.TokenizeTopicFullName(topicFn)
 	if err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ func NewPartitionTopic(url, token, trustStore, topicFn, adminURL string, numOfPa
 	return &PartitionTopics{
 		NumberOfPartitions: numOfPartitions,
 		PulsarURL:          url,
-		Token:              token,
+		TokenSupplier:      tokenSupplier,
 		TrustStore:         trustStore,
 		Tenant:             tenant,
 		Namespace:          ns,
@@ -86,7 +86,13 @@ func (pt *PartitionTopics) GetPartitionTopic() (bool, error) {
 		return false, nil
 	}
 
-	request.Header.Add("Authorization", "Bearer "+pt.Token)
+	if pt.TokenSupplier != nil {
+		token, err := pt.TokenSupplier()
+		if err != nil {
+			return false, nil
+		}
+		request.Header.Add("Authorization", "Bearer "+token)
+	}
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
@@ -137,7 +143,13 @@ func (pt *PartitionTopics) CreatePartitionTopic() error {
 	}
 
 	request.Header.Add("Content-Type", "text/plain")
-	request.Header.Add("Authorization", "Bearer "+pt.Token)
+	if pt.TokenSupplier != nil {
+		token, err := pt.TokenSupplier()
+		if err != nil {
+			return nil
+		}
+		request.Header.Add("Authorization", "Bearer "+token)
+	}
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}

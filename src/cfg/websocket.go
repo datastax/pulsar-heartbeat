@@ -83,9 +83,15 @@ func tokenAsURLQueryParam(url, token string) string {
 }
 
 // WsLatencyTest latency test for websocket
-func WsLatencyTest(producerURL, subscriptionURL, token string) (MsgResult, error) {
+func WsLatencyTest(producerURL, subscriptionURL string, tokenSupplier func()(string,error)) (MsgResult, error) {
 	wsHeaders := http.Header{}
-	if token != "" {
+	token := ""
+	var err error
+	if tokenSupplier != nil {
+		token, err = tokenSupplier()
+		if err != nil {
+			return MsgResult{Latency: failedLatency}, err
+		}
 		bearerToken := "Bearer " + token
 		wsHeaders.Add("Authorization", bearerToken)
 	}
@@ -193,12 +199,12 @@ func WsLatencyTest(producerURL, subscriptionURL, token string) (MsgResult, error
 
 // TestWsLatency test all clusters' websocket pub sub latency
 func TestWsLatency(config WsConfig) {
-	token := util.AssignString(config.Token, GetConfig().Token)
+	tokenSupplier := util.TokenSupplierWithOverride(config.Token, GetConfig().TokenSupplier())
 	expectedLatency := util.TimeDuration(config.LatencyBudgetMs, 2*latencyBudget, time.Millisecond)
 
 	stdVerdict := util.GetStdBucket(config.Cluster)
 
-	result, err := WsLatencyTest(config.ProducerURL, config.ConsumerURL, token)
+	result, err := WsLatencyTest(config.ProducerURL, config.ConsumerURL, tokenSupplier)
 	if err != nil {
 		errMsg := fmt.Sprintf("cluster %s, %s websocket latency test Pulsar error: %v", config.Cluster, config.Name, err)
 		log.Errorf(errMsg)

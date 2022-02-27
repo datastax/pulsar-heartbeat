@@ -10,6 +10,10 @@ prometheusConfig:
   exposeMetrics: true
 slackConfig:
   alertUrl: # required for slack integration to work
+tokenOAuthConfig:
+  ClientID: "example-client"
+  ClientSecret: "example-client-secret"
+  TokenURL: "<token-endpoint of oauth2 provider>"
 sitesConfig:
   sites:
 opsGenieConfig:

@@ -95,6 +95,15 @@ func AssignString(values ...string) string {
 	return ""
 }
 
+func TokenSupplierWithOverride(token string, supplier func()(string, error)) func()(string, error) {
+	if token != "" {
+		return func()(string, error) {
+			return token, nil
+		}
+	}
+	return supplier
+}
+
 // ReportError logs error
 func ReportError(err error) error {
 	log.Printf("error %v", err)
