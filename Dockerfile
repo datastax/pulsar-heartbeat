@@ -19,7 +19,7 @@ RUN git clone https://github.com/opencontainers/runc.git /go/src/github.com/open
 #
 # build stage
 #
-FROM golang:alpine AS builder
+FROM golang:1.17-alpine AS builder
 
 # Add Maintainer Info
 LABEL maintainer="ming"

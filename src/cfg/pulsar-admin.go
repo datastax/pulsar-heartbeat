@@ -22,6 +22,8 @@
 package cfg
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -39,10 +41,28 @@ import (
 func PulsarAdminTenant(clusterURL string, tokenSupplier func()(string,error)) (int, error) {
 
 	client := retryablehttp.NewClient()
-	client.HTTPClient.Timeout = time.Duration(10) * time.Second
 	client.RetryWaitMin = 4 * time.Second
 	client.RetryWaitMax = 64 * time.Second
 	client.RetryMax = 2
+	caCertFile := GetConfig().TrustStore
+	if caCertFile != "" {
+		caCert, err := ioutil.ReadFile(caCertFile)
+		if err != nil {
+			return 0, fmt.Errorf("error opening cert file %s, Error: %v", caCertFile, err)
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+
+		t := &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: caCertPool,
+			},
+		}
+		client.HTTPClient = &http.Client{
+			Transport: t,
+		}
+	}
+	client.HTTPClient.Timeout = time.Duration(30) * time.Second
 
 	req, err := retryablehttp.NewRequest(http.MethodGet, clusterURL, nil)
 	if err != nil {
