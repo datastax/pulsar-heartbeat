@@ -25,12 +25,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"golang.org/x/oauth2/clientcredentials"
 	"io/ioutil"
 	"os"
 	"strings"
 	"time"
 	"unicode"
+
+	"golang.org/x/oauth2/clientcredentials"
 
 	"github.com/datastax/pulsar-heartbeat/src/util"
 
@@ -153,9 +154,10 @@ type K8sClusterCfg struct {
 
 // BrokersCfg monitors all brokers in the cluster
 type BrokersCfg struct {
-	InClusterRESTURL string         `json:"inclusterRestURL"`
-	IntervalSeconds  int            `json:"intervalSeconds"`
-	AlertPolicy      AlertPolicyCfg `json:"AlertPolicy"`
+	BrokerTestRequired bool           `json:"brokerTestRequired"`
+	InClusterRESTURL   string         `json:"inclusterRestURL"`
+	IntervalSeconds    int            `json:"intervalSeconds"`
+	AlertPolicy        AlertPolicyCfg `json:"AlertPolicy"`
 }
 
 // TenantUsageCfg tenant usage reporting and monitoring
@@ -169,8 +171,8 @@ type Configuration struct {
 	// Name is the Pulsar cluster name, it is mandatory
 	Name string `json:"name"`
 	// ClusterName is the Pulsar cluster name if the Name cannot be used as the Pulsar cluster name, optional
-	ClusterName string `json:"clusterName"`
-	TokenOAuthConfig    *clientcredentials.Config    `json:"tokenOAuthConfig"`
+	ClusterName      string                    `json:"clusterName"`
+	TokenOAuthConfig *clientcredentials.Config `json:"tokenOAuthConfig"`
 	// TokenFilePath is the file path to Pulsar JWT. It takes precedence of the token attribute.
 	TokenFilePath string `json:"tokenFilePath"`
 	// Token is a Pulsar JWT can be used for both client client or http admin client
@@ -189,7 +191,7 @@ type Configuration struct {
 	WebSocketConfig   []WsConfig         `json:"webSocketConfig"`
 	TenantUsageConfig TenantUsageCfg     `json:"tenantUsageConfig"`
 
-	tokenFunc		func()(string, error)
+	tokenFunc func() (string, error)
 }
 
 func (c *Configuration) Init() {
