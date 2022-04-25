@@ -55,7 +55,7 @@ type MsgResult struct {
 
 // GetPulsarClient gets the pulsar client object
 // Note: the caller has to Close() the client object
-func GetPulsarClient(pulsarURL string, tokenSupplier func()(string,error)) (pulsar.Client, error) {
+func GetPulsarClient(pulsarURL string, tokenSupplier func() (string, error)) (pulsar.Client, error) {
 	client, ok := clients[pulsarURL]
 	if !ok {
 		clientOpt := pulsar.ClientOptions{
@@ -88,7 +88,7 @@ func GetPulsarClient(pulsarURL string, tokenSupplier func()(string,error)) (puls
 }
 
 // PubSubLatency the latency including successful produce and consume of a message
-func PubSubLatency(clusterName string, tokenSupplier func()(string,error), uri, topicName, outputTopic, msgPrefix, expectedSuffix string, payloads [][]byte, maxPayloadSize int) (MsgResult, error) {
+func PubSubLatency(clusterName string, tokenSupplier func() (string, error), uri, topicName, outputTopic, msgPrefix, expectedSuffix string, payloads [][]byte, maxPayloadSize int) (MsgResult, error) {
 	client, err := GetPulsarClient(uri, tokenSupplier)
 	if err != nil {
 		return MsgResult{Latency: failedLatency}, err
@@ -238,7 +238,9 @@ func PubSubLatency(clusterName string, tokenSupplier func()(string,error), uri, 
 
 // TopicLatencyTestThread tests a message delivery in topic and measure the latency.
 func TopicLatencyTestThread() {
-	topics := GetConfig().PulsarTopicConfig
+	cfg := GetConfig()
+	topics := cfg.PulsarTopicConfig
+	testBroker := cfg.BrokersConfig.BrokerTestRequired || cfg.K8sConfig.Enabled
 	log.Infof("topic configuration %v", topics)
 
 	for _, topic := range topics {
@@ -249,7 +251,9 @@ func TopicLatencyTestThread() {
 			for {
 				select {
 				case <-ticker.C:
-					go TestBrokers(t)
+					if testBroker {
+						go TestBrokers(t)
+					}
 					TestTopicLatency(t)
 				}
 			}
@@ -274,7 +278,7 @@ func TestTopicLatency(topicCfg TopicCfg) {
 	}
 }
 
-func testTopicLatency(clusterName string, tokenSupplier func()(string,error), topicCfg TopicCfg) {
+func testTopicLatency(clusterName string, tokenSupplier func() (string, error), topicCfg TopicCfg) {
 	stdVerdict := util.GetStdBucket(clusterName)
 	expectedLatency := util.TimeDuration(topicCfg.LatencyBudgetMs, latencyBudget, time.Millisecond)
 	prefix := "messageid"
@@ -335,7 +339,7 @@ func expectedMessage(payload, expected string) string {
 	return payload
 }
 
-func testPartitionTopic(clusterName string, tokenSupplier func()(string,error), cfg TopicCfg) {
+func testPartitionTopic(clusterName string, tokenSupplier func() (string, error), cfg TopicCfg) {
 	trustStore := util.AssignString(cfg.TrustStore, GetConfig().TrustStore)
 	testName := "partition-topics-test"
 	component := clusterName + "-" + testName
@@ -372,7 +376,7 @@ func testPartitionTopic(clusterName string, tokenSupplier func()(string,error), 
 	}
 }
 
-func getPartition(cfg TopicCfg, tokenSupplier func()(string,error), trustStore string) (*topic.PartitionTopics, error) {
+func getPartition(cfg TopicCfg, tokenSupplier func() (string, error), trustStore string) (*topic.PartitionTopics, error) {
 	pt, ok := partitionTopics[cfg.TopicName]
 	if !ok {
 		var err error
