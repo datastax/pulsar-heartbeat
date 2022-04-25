@@ -5,8 +5,7 @@ go 1.15
 require (
 	github.com/PagerDuty/go-pagerduty v1.3.0
 	github.com/antonmedv/expr v1.8.8
-	github.com/apache/pulsar-client-go v0.7.1-0.20211210071253-d0d5d0ae4037
-	github.com/apache/pulsar-client-go/oauth2 v0.0.0-20211210071253-d0d5d0ae4037 // indirect
+	github.com/apache/pulsar-client-go v0.8.1
 	github.com/apex/log v1.9.0
 	github.com/danieljoos/wincred v1.1.0 // indirect
 	github.com/dvsekhvalnov/jose2go v0.0.0-20201001154944-b09cfaf05951 // indirect
