@@ -54,17 +54,13 @@ jobs:
       - name: Build Binary
         run: |
           go mod download
-          cd src
-          go build ./...
+          make build
       - name: Go Vet
         run: |
-          cd src
           go vet ./...
       - name: Go test
         run: |
-          cd src
-          go test ./...
-
+          make test
       - name: Run Test and Code Coverage
         run: |
           pwd
