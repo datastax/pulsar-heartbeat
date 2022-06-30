@@ -133,7 +133,7 @@ func (t *IncidentAlertPolicy) report(component, msg, desc string) bool {
 	}
 	if t.Limit > 0 && t.Counters+1 >= t.Limit {
 		// pre-alert before an incident could be created next time
-		VerboseAlert(component, msg, 10*time.Minute)
+		VerboseAlert(component, msg, time.Hour)
 	}
 
 	windowCounts := 0
