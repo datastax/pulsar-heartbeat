@@ -25,12 +25,18 @@ FROM golang:1.17-alpine AS builder
 LABEL maintainer="ming"
 
 RUN apk --no-cache add build-base git gcc
-WORKDIR /root/
-ADD . /root
-RUN cd /root/src && go build -o pulsar-heartbeat
 
-# Add debug tool
-RUN go get github.com/google/gops
+WORKDIR /root/
+
+# Go debugging tools
+RUN go install github.com/google/gops@latest
+
+# pre-copy/cache go.mod for downloading dependencies and only re-download them in subsequent builds if dependencies change
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+
+COPY . .
+RUN --mount=type=cache,target=/root/.cache/go-build make build
 
 #
 # Start a new stage from scratch
@@ -41,7 +47,7 @@ COPY --from=proot --chown=1000:0 /proot /home/user/.runrootless/runrootless-proo
 COPY --from=runc --chown=1000:0 /runc /home/user/bin/runc
 
 RUN apk --no-cache add ca-certificates
-COPY --from=builder --chown=1000:0 /root/src/pulsar-heartbeat /home/user
+COPY --from=builder --chown=1000:0 /root/bin/pulsar-heartbeat /home/user
 
 # Copy debug tools
 COPY --from=builder --chown=1000:0 /go/bin/gops /home/user/gops

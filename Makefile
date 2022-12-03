@@ -17,7 +17,7 @@ all: push
 #
 # Docker tag with v prefix to differentiate the official release build, triggered by git tagging
 #
-TAG ?= v0.0.7
+TAG ?= latest
 PREFIX ?= datastax/pulsar-heartbeat
 BUILD_DIR ?= bin
 

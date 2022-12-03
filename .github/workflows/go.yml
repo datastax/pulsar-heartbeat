@@ -109,4 +109,4 @@ jobs:
       - name: Build Docker Image
         run: |
           pwd
-          sudo docker build -t pulsar-heartbeat .
+          sudo DOCKER_BUILDKIT=1 docker build -t pulsar-heartbeat .
