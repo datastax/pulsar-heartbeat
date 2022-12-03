@@ -91,7 +91,7 @@ func GetPulsarClient(pulsarURL string, tokenSupplier func() (string, error)) (pu
 func PubSubLatency(clusterName string, tokenSupplier func() (string, error), uri, topicName, outputTopic, msgPrefix, expectedSuffix string, payloads [][]byte, maxPayloadSize int) (MsgResult, error) {
 	client, err := GetPulsarClient(uri, tokenSupplier)
 	if err != nil {
-		return MsgResult{Latency: failedLatency}, err
+		return MsgResult{Latency: failedLatency}, fmt.Errorf("failed to get pulsar client to uri '%s': %w", uri, err)
 	}
 
 	// it is important to close client after close of producer/consumer
@@ -106,7 +106,7 @@ func PubSubLatency(clusterName string, tokenSupplier func() (string, error), uri
 		// we guess something could have gone wrong if producer cannot be created
 		client.Close()
 		delete(clients, uri)
-		return MsgResult{Latency: failedLatency}, err
+		return MsgResult{Latency: failedLatency}, fmt.Errorf("failed to create producer to topic '%s' on host '%s': %w", topicName, uri, err)
 	}
 
 	defer producer.Close()
@@ -126,7 +126,7 @@ func PubSubLatency(clusterName string, tokenSupplier func() (string, error), uri
 	if err != nil {
 		defer client.Close() //must defer to allow producer to be closed first
 		delete(clients, uri)
-		return MsgResult{Latency: failedLatency}, err
+		return MsgResult{Latency: failedLatency}, fmt.Errorf("failed to subscribe to topic: %w", err)
 	}
 	defer consumer.Close()
 
@@ -157,7 +157,7 @@ func PubSubLatency(clusterName string, tokenSupplier func() (string, error), uri
 			msg, err := consumer.Receive(cCtx)
 			if err != nil {
 				receivedCount = 0 // play safe?
-				errorChan <- fmt.Errorf("consumer Receive() error: %v", err)
+				errorChan <- fmt.Errorf("consumer Receive() error: %w", err)
 				break
 			}
 			receivedTime := time.Now()

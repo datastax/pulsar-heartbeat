@@ -279,12 +279,11 @@ func hasPrefix(buf []byte, prefix []byte) bool {
 	return bytes.HasPrefix(trim, prefix)
 }
 
-//GetConfig returns a reference to the Configuration
+// GetConfig returns a reference to the Configuration
 func GetConfig() *Configuration {
 	return &Config
 }
 
-//
 type monitorFunc func()
 
 // RunInterval runs interval

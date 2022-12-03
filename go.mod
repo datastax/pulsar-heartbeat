@@ -11,7 +11,6 @@ require (
 	github.com/google/gops v0.3.10
 	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/go-retryablehttp v0.6.4
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.1
 	golang.org/x/oauth2 v0.0.0-20210402161424-2e8d93401602
 	k8s.io/api v0.18.5
@@ -51,6 +50,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/mtibben/percent v0.2.1 // indirect
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.26.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
