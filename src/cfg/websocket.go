@@ -23,6 +23,7 @@ package cfg
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -50,7 +51,10 @@ type ReceivingMessage struct {
 
 // AckMessage is the message struct to acknowledge a message
 type AckMessage struct {
-	MessageID string `json:"messageId"`
+	Result        string
+	MessageID     string `json:"messageId"`
+	ErrorCode     int
+	SchemaVersion int
 }
 
 func (w *WsConfig) reconcileConfig() error {
@@ -83,14 +87,14 @@ func tokenAsURLQueryParam(url, token string) string {
 }
 
 // WsLatencyTest latency test for websocket
-func WsLatencyTest(producerURL, subscriptionURL string, tokenSupplier func()(string,error)) (MsgResult, error) {
+func WsLatencyTest(producerURL, subscriptionURL string, tokenSupplier func() (string, error)) (MsgResult, error) {
 	wsHeaders := http.Header{}
 	token := ""
 	var err error
 	if tokenSupplier != nil {
 		token, err = tokenSupplier()
 		if err != nil {
-			return MsgResult{Latency: failedLatency}, err
+			return MsgResult{Latency: failedLatency}, fmt.Errorf("failed to create token: %w", err)
 		}
 		bearerToken := "Bearer " + token
 		wsHeaders.Add("Authorization", bearerToken)
@@ -101,13 +105,15 @@ func WsLatencyTest(producerURL, subscriptionURL string, tokenSupplier func()(str
 	// log.Infof("wss producer connection url %s\n\t\tconsumer url %s\n", prodURL, subsURL)
 	prodConn, _, err := websocket.DefaultDialer.Dial(prodURL, wsHeaders)
 	if err != nil {
-		return MsgResult{Latency: failedLatency}, err
+		wrappedErr := fmt.Errorf("failed to create producer connection to '%s', "+
+			"this could be caused by a bad token or missing topic: %w", prodURL, err)
+		return MsgResult{Latency: failedLatency}, wrappedErr
 	}
 	defer prodConn.Close()
 
 	consConn, _, err := websocket.DefaultDialer.Dial(subsURL, wsHeaders)
 	if err != nil {
-		return MsgResult{Latency: failedLatency}, err
+		return MsgResult{Latency: failedLatency}, fmt.Errorf("failed to create consumer connection to '%s': %w", subsURL, err)
 	}
 	defer consConn.Close()
 
@@ -162,15 +168,16 @@ func WsLatencyTest(producerURL, subscriptionURL string, tokenSupplier func()(str
 	go func() {
 		_, rawBytes, err := prodConn.ReadMessage()
 		if err != nil {
-			log.Errorf("websocket producer received benign error: %v", err)
+			log.Warnf("websocket producer failed to read ack: %v", err)
 			return
 		}
-		byteMessage, err := base64.StdEncoding.DecodeString(string(rawBytes))
+		var producerAck AckMessage
+		err = json.Unmarshal(rawBytes, &producerAck)
 		if err != nil {
-			log.Errorf("decode producer response error: %v", err)
+			log.Warnf("websocket producer failed to unmarshal ack: %v", err)
 			return
 		}
-		log.Infof("websocket producer received response: %s", string(byteMessage))
+		log.Debugf("websocket producer received ack result: %v", producerAck.Result)
 	}()
 
 	encodedText := base64.StdEncoding.EncodeToString([]byte(messageText))
@@ -181,7 +188,7 @@ func WsLatencyTest(producerURL, subscriptionURL string, tokenSupplier func()(str
 
 	err = prodConn.WriteJSON(message)
 	if err != nil {
-		return MsgResult{Latency: failedLatency}, err
+		return MsgResult{Latency: failedLatency}, fmt.Errorf("failed to write to producer: %w", err)
 	}
 
 	for {

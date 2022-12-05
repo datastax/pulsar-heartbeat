@@ -70,7 +70,7 @@ func main() {
 	cfg.PushToPrometheusProxyThread()
 
 	if config.PrometheusConfig.ExposeMetrics {
-		log.Infof("start to listen to http port %s", config.PrometheusConfig.Port)
+		log.Infof("serving metrics on port %s", config.PrometheusConfig.Port)
 		http.Handle("/metrics", promhttp.Handler())
 		http.ListenAndServe(util.AssignString(config.PrometheusConfig.Port, ":8089"), nil)
 	}

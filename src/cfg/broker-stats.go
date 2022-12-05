@@ -36,7 +36,6 @@ import (
 	"github.com/apache/pulsar-client-go/pulsar"
 	"github.com/apex/log"
 	"github.com/datastax/pulsar-heartbeat/src/util"
-	"github.com/pkg/errors"
 )
 
 var statsLog = log.WithFields(log.Fields{"app": "broker health monitor"})
@@ -46,7 +45,7 @@ const (
 )
 
 // GetBrokers gets a list of brokers and ports
-func GetBrokers(restBaseURL, clusterName string, tokenSupplier func()(string, error)) ([]string, error) {
+func GetBrokers(restBaseURL, clusterName string, tokenSupplier func() (string, error)) ([]string, error) {
 	brokersURL := util.SingleSlashJoin(restBaseURL, "admin/v2/brokers/"+clusterName)
 	newRequest, err := http.NewRequest(http.MethodGet, brokersURL, nil)
 	if err != nil {
@@ -158,7 +157,7 @@ func BrokerTopicsQuery(brokerBaseURL, token string) ([]string, error) {
 }
 
 // ConnectBrokerHealthcheckTopic reads the latest messages off broker's healthcheck topic
-func ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL string, tokenSupplier func()(string,error), completeChan chan error) {
+func ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL string, tokenSupplier func() (string, error), completeChan chan error) {
 	// "persistent://pulsar/{cluster}/10.244.7.85:8080/healthcheck"
 	brokerAddr := util.SingleSlashJoin(strings.ReplaceAll(brokerURL, "http://", ""), "healthcheck")
 	defer func() {
@@ -207,7 +206,7 @@ func ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL string, tok
 }
 
 // EvaluateBrokers evaluates all brokers' health
-func EvaluateBrokers(urlPrefix, clusterName, pulsarURL string, tokenSupplier func()(string,error), duration time.Duration) (int, error) {
+func EvaluateBrokers(urlPrefix, clusterName, pulsarURL string, tokenSupplier func() (string, error), duration time.Duration) (int, error) {
 	brokers, err := GetBrokers(urlPrefix, clusterName, tokenSupplier)
 	if err != nil {
 		return 0, err
@@ -244,7 +243,7 @@ func EvaluateBrokers(urlPrefix, clusterName, pulsarURL string, tokenSupplier fun
 
 	statsLog.Infof("cluster %s has %d failed brokers out of total %d brokers", clusterName, failedBrokers, len(brokers))
 	if errStr != "" {
-		return failedBrokers, errors.Errorf(errStr)
+		return failedBrokers, fmt.Errorf(errStr)
 	}
 
 	return failedBrokers, nil
