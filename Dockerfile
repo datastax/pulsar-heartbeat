@@ -9,17 +9,14 @@ RUN git clone https://github.com/rootless-containers/PRoot.git \
   && cd src \
   && make && mv proot / && make clean
 
-FROM golang:1.9-alpine AS runc
+FROM golang:1.18-alpine AS runc
 RUN apk add --no-cache git g++ linux-headers
-RUN git clone https://github.com/opencontainers/runc.git /go/src/github.com/opencontainers/runc \
-  && cd /go/src/github.com/opencontainers/runc \
-  && git checkout -q e6516b3d5dc780cb57a976013c242a9a93052543 \
-  && go build -o /runc .
+RUN go install github.com/opencontainers/runc@latest
 
 #
 # build stage
 #
-FROM golang:1.17-alpine AS builder
+FROM golang:1.18-alpine AS builder
 
 # Add Maintainer Info
 LABEL maintainer="ming"
@@ -44,7 +41,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build make build
 FROM alpine:3.7
 RUN adduser -u 1000 -S user -G root
 COPY --from=proot --chown=1000:0 /proot /home/user/.runrootless/runrootless-proot
-COPY --from=runc --chown=1000:0 /runc /home/user/bin/runc
+COPY --from=runc --chown=1000:0 /go/bin/runc /home/user/bin/runc
 
 RUN apk --no-cache add ca-certificates
 COPY --from=builder --chown=1000:0 /root/bin/pulsar-heartbeat /home/user
