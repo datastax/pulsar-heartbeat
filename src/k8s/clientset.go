@@ -166,20 +166,6 @@ func GetK8sClient(pulsarNamespace string) (*Client, error) {
 	return &client, nil
 }
 
-func buildInClusterConfig() kubernetes.Interface {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		log.Fatalf("Can not get kubernetes config: %v", err)
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Fatalf("Can not create kubernetes client: %v", err)
-	}
-
-	return clientset
-}
-
 // UpdateReplicas updates the replicas for deployments and sts
 func (c *Client) UpdateReplicas(namespace string) error {
 	brokersts, err := c.getStatefulSets(namespace, BrokerSts)

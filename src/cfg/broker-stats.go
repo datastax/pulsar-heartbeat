@@ -40,10 +40,6 @@ import (
 
 var statsLog = log.WithFields(log.Fields{"app": "broker health monitor"})
 
-const (
-	topicStatsDBTable = "topic-stats"
-)
-
 // GetBrokers gets a list of brokers and ports
 func GetBrokers(restBaseURL, clusterName string, tokenSupplier func() (string, error)) ([]string, error) {
 	brokersURL := util.SingleSlashJoin(restBaseURL, "admin/v2/brokers/"+clusterName)

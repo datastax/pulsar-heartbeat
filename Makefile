@@ -38,3 +38,6 @@ push: container
 clean:
 	rm $(BUILD_DIR)/*
 	docker rmi $(PREFIX):$(TAG)
+
+lint:
+	golangci-lint run

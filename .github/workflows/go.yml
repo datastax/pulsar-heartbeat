@@ -11,57 +11,31 @@ on:
       - created 
 
 jobs:
-  analysis:
-    name: static analysis
+  golangci-lint:
+    name: lint
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v2
+      - uses: actions/setup-go@v2
         with:
           go-version: 1.18
+      - uses: actions/checkout@v3
+      - uses: golangci/golangci-lint-action@v3
 
-      - name: Check out code
-        uses: actions/checkout@v1
-        with:
-          fetch-depth: 1
-          path: go/src/github.com/datastax/pulsar-heartbeat
-
-      - name: Lint Go Code
-        run: |
-          export PATH=$PATH:$(go env GOPATH)/bin # temporary fix. See https://github.com/actions/setup-go/issues/14
-          go install golang.org/x/lint/golint@latest
-          cd src
-          golint ./...
-      - name: Set up Python 3
-        uses: actions/setup-python@v1
-        with:
-          python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
-          architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
   build_test:
-    name: build and test
+    name: build-and-test
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v1
+      - uses: actions/setup-go@v3
         with:
           go-version: 1.18
-
-      - name: Check out code
-        uses: actions/checkout@v1
-        with:
-          fetch-depth: 1
-          path: go/src/github.com/datastax/pulsar-heartbeat
-      - name: Build Binary
+      - uses: actions/checkout@v3
+      - name: build
         run: |
-          go mod download
           make build
-      - name: Go Vet
-        run: |
-          go vet ./...
-      - name: Go test
+      - name: run-tests
         run: |
           make test
-      - name: Run Test and Code Coverage
+      - name: run-test-and-code-coverage
         run: |
           pwd
           cd ./scripts
@@ -70,43 +44,32 @@ jobs:
           GOPATH: /home/runner/work/pulsar-heartbeat/go
       - name: Upload Coverage
         if: github.repository == 'datastax/pulsar-heartbeat'
-        uses: codecov/codecov-action@v1.0.0
+        uses: codecov/codecov-action@v3
         with :
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage.txt
           yml: ./.codecov.yml
           fail_ci_fi_error: true
-          path: go/src/github.com/datastax/pulsar-heartbeat
 
   build_multiple_os_arch:
     name: build on multiple OS and arch
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v1
+      - uses: actions/setup-go@v3
         with:
           go-version: 1.18
-      - name: Check out code
-        uses: actions/checkout@v1
-        with:
-          fetch-depth: 1
-          path: go/src/github.com/datastax/pulsar-heartbeat
-      - name: Build Binary
+      - uses: actions/checkout@v3
+      - name: build-binary
         run: |
           cd ./scripts
           ./build-multi-os-arch.sh
 
   docker:
-    name: docker
+    name: docker-build
     runs-on: ubuntu-latest 
     steps:
-      - name: Check out code
-        uses: actions/checkout@v1
-        with:
-          fetch-depth: 1
-          path: go/src/github.com/datastax/pulsar-heartbeat
-
-      - name: Build Docker Image
+      - uses: actions/checkout@v3
+      - name: build-docker-image
         run: |
           pwd
           sudo DOCKER_BUILDKIT=1 docker build -t pulsar-heartbeat .
