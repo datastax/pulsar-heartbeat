@@ -103,7 +103,10 @@ func WsLatencyTest(producerURL, subscriptionURL string, tokenSupplier func() (st
 	subsURL := tokenAsURLQueryParam(subscriptionURL, token)
 
 	// log.Infof("wss producer connection url %s\n\t\tconsumer url %s\n", prodURL, subsURL)
-	prodConn, _, err := websocket.DefaultDialer.Dial(prodURL, wsHeaders)
+	prodConn, resp, err := websocket.DefaultDialer.Dial(prodURL, wsHeaders)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		wrappedErr := fmt.Errorf("failed to create producer connection to '%s', "+
 			"this could be caused by a bad token or missing topic: %w", prodURL, err)
@@ -111,7 +114,10 @@ func WsLatencyTest(producerURL, subscriptionURL string, tokenSupplier func() (st
 	}
 	defer prodConn.Close()
 
-	consConn, _, err := websocket.DefaultDialer.Dial(subsURL, wsHeaders)
+	consConn, resp, err := websocket.DefaultDialer.Dial(subsURL, wsHeaders)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return MsgResult{Latency: failedLatency}, fmt.Errorf("failed to create consumer connection to '%s': %w", subsURL, err)
 	}

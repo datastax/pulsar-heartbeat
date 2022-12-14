@@ -1,0 +1,29 @@
+# Make sure golangci-lint is installed.
+# https://github.com/golangci/golangci-lint#install
+# We can execute `golangci-lint run` for code checking.
+run:
+  deadline: 5m
+
+linters:
+  # Uncomment this line to run only the explicitly enabled linters
+  # disable-all: true
+
+  # Run these linters in addition to the default ones
+  enable:
+    - bodyclose
+  #   - goimports
+  #   - lll
+  #   - misspell
+  #   - prealloc
+  #   - revive
+  #   - stylecheck
+  #   - unconvert
+  #   - unparam
+
+  # Disable these default linters
+  disable:
+    - errcheck
+    - gosimple
+    - staticcheck
+    - structcheck
+    - varcheck
