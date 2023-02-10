@@ -38,7 +38,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build make build
 #
 # Start a new stage from scratch
 #
-FROM alpine:3.7
+FROM alpine:3.15
 RUN adduser -u 1000 -S user -G root
 COPY --from=proot --chown=1000:0 /proot /home/user/.runrootless/runrootless-proot
 COPY --from=runc --chown=1000:0 /go/bin/runc /home/user/bin/runc
