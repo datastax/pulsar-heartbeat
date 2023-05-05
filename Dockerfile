@@ -1,5 +1,5 @@
 # multi-stage build
-FROM debian:9 AS proot
+FROM debian:11 AS proot
 RUN apt-get update && apt-get install -q -y build-essential git libseccomp-dev libtalloc-dev \
  # deps for PERSISTENT_CHOWN extension
  libprotobuf-c-dev libattr1-dev
