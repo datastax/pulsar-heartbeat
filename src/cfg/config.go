@@ -217,8 +217,8 @@ func (c *Configuration) Init() {
 			}
 			return string(tokenBytes), nil
 		}
-	} else if c.Token != "" {
-		c.Token = strings.TrimSuffix(os.Getenv("PulsarToken"), "\n")
+	} else {
+		c.Token = strings.TrimSuffix(util.AssignString(c.Token, os.Getenv("PulsarToken")), "\n")
 		c.tokenFunc = func() (string, error) {
 			return c.Token, nil
 		}
