@@ -175,7 +175,7 @@ type Configuration struct {
 	TokenOAuthConfig *clientcredentials.Config `json:"tokenOAuthConfig"`
 	// TokenFilePath is the file path to Pulsar JWT. It takes precedence of the token attribute.
 	TokenFilePath string `json:"tokenFilePath"`
-	// Token is a Pulsar JWT can be used for both client client or http admin client
+	// Token is a Pulsar JWT can be used for both client or http admin client
 	Token             string             `json:"token"`
 	BrokersConfig     BrokersCfg         `json:"brokersConfig"`
 	TrustStore        string             `json:"trustStore"`
@@ -199,18 +199,6 @@ func (c *Configuration) Init() {
 		panic("a valid `name` in Configuration must be specified")
 	}
 
-	// reconcile the JWT
-	if len(c.TokenFilePath) > 1 {
-		tokenBytes, err := ioutil.ReadFile(c.TokenFilePath)
-		if err != nil {
-			log.Errorf("failed to read Pulsar JWT from a file %s", c.TokenFilePath)
-		} else {
-			log.Infof("read Pulsar token from the file %s", c.TokenFilePath)
-			c.Token = string(tokenBytes)
-		}
-	}
-	c.Token = strings.TrimSuffix(util.AssignString(c.Token, os.Getenv("PulsarToken")), "\n")
-
 	if c.TokenOAuthConfig != nil {
 		tokenSrc := c.TokenOAuthConfig.TokenSource(context.Background())
 		c.tokenFunc = func() (string, error) {
@@ -220,7 +208,17 @@ func (c *Configuration) Init() {
 			}
 			return ot.AccessToken, nil
 		}
+	} else if len(c.TokenFilePath) > 1 {
+		// In the case of Kubernetes, the token file can be updated, so this reads it from the file every time.
+		c.tokenFunc = func() (string, error) {
+			tokenBytes, err := ioutil.ReadFile(c.TokenFilePath)
+			if err != nil {
+				return "", err
+			}
+			return string(tokenBytes), nil
+		}
 	} else if c.Token != "" {
+		c.Token = strings.TrimSuffix(os.Getenv("PulsarToken"), "\n")
 		c.tokenFunc = func() (string, error) {
 			return c.Token, nil
 		}
