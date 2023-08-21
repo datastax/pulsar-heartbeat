@@ -26,9 +26,9 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	log "github.com/apex/log"
@@ -38,7 +38,7 @@ import (
 
 // PulsarAdminTenant probes the tenant endpoint to get a list of tenants
 // returns the number of tenants on the cluster
-func PulsarAdminTenant(clusterURL string, tokenSupplier func()(string,error)) (int, error) {
+func PulsarAdminTenant(clusterURL string, tokenSupplier func() (string, error)) (int, error) {
 
 	client := retryablehttp.NewClient()
 	client.RetryWaitMin = 4 * time.Second
@@ -46,7 +46,7 @@ func PulsarAdminTenant(clusterURL string, tokenSupplier func()(string,error)) (i
 	client.RetryMax = 2
 	caCertFile := GetConfig().TrustStore
 	if caCertFile != "" {
-		caCert, err := ioutil.ReadFile(caCertFile)
+		caCert, err := os.ReadFile(caCertFile)
 		if err != nil {
 			return 0, fmt.Errorf("error opening cert file %s, Error: %v", caCertFile, err)
 		}
@@ -85,14 +85,8 @@ func PulsarAdminTenant(clusterURL string, tokenSupplier func()(string,error)) (i
 		return 0, err
 	}
 
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return 0, err
-	}
-
 	var tenants []string
-
-	err = json.Unmarshal(bodyBytes, &tenants)
+	err = json.NewDecoder(resp.Body).Decode(&tenants)
 	if err != nil {
 		return 0, err
 	}

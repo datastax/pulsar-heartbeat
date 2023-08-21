@@ -26,7 +26,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -44,7 +43,7 @@ import (
 type PartitionTopics struct {
 	NumberOfPartitions int
 	PulsarURL          string
-	TokenSupplier      func()(string, error)
+	TokenSupplier      func() (string, error)
 	TrustStore         string
 	Tenant             string
 	Namespace          string
@@ -55,7 +54,7 @@ type PartitionTopics struct {
 }
 
 // NewPartitionTopic creates a PartitionTopic test object
-func NewPartitionTopic(url string, tokenSupplier func()(string,error), trustStore, topicFn, adminURL string, numOfPartitions int) (*PartitionTopics, error) {
+func NewPartitionTopic(url string, tokenSupplier func() (string, error), trustStore, topicFn, adminURL string, numOfPartitions int) (*PartitionTopics, error) {
 	isPersistent, tenant, ns, topic, err := util.TokenizeTopicFullName(topicFn)
 	if err != nil {
 		return nil, err
@@ -110,13 +109,8 @@ func (pt *PartitionTopics) GetPartitionTopic() (bool, error) {
 		return false, err
 	}
 
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		pt.log.Errorf("GET PartitionTopic %s read response body error %v", url, err)
-		return false, err
-	}
 	var partitionTopic []string
-	if err = json.Unmarshal(body, &partitionTopic); err != nil {
+	if err = json.NewDecoder(response.Body).Decode(&partitionTopic); err != nil {
 		pt.log.Errorf("GET PartitionTopic %s unmarshal response body error %v", url, err)
 		return false, err
 	}

@@ -53,10 +53,7 @@ const (
 
 // MustAlert returns whether the silence window has expired since the last alert.
 func (av *AlertVerbosity) MustAlert() bool {
-	if time.Since(av.lastAlertTime) > av.silenceWindow {
-		return true
-	}
-	return false
+	return time.Since(av.lastAlertTime) > av.silenceWindow
 }
 
 var componentsAlert = util.NewSycMap()
@@ -122,7 +119,7 @@ func SendSlackNotification(webhookURL string, msg SlackMessage) error {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(resp.Body)
 	if buf.String() != "ok" {
-		return fmt.Errorf("Non-ok response returned from Slack, message %s", buf.String())
+		return fmt.Errorf("non-ok response returned from Slack, message %s", buf.String())
 	}
 	return nil
 }

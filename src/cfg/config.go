@@ -25,7 +25,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -211,14 +210,14 @@ func (c *Configuration) Init() {
 	} else if len(c.TokenFilePath) > 1 {
 		// In the case of Kubernetes, the token file can be updated, so this reads it from the file every time.
 		c.tokenFunc = func() (string, error) {
-			tokenBytes, err := ioutil.ReadFile(c.TokenFilePath)
+			tokenBytes, err := os.ReadFile(c.TokenFilePath)
 			if err != nil {
 				return "", err
 			}
 			return string(tokenBytes), nil
 		}
 	} else {
-		c.Token = strings.TrimSuffix(util.AssignString(c.Token, os.Getenv("PulsarToken")), "\n")
+		c.Token = strings.TrimSuffix(util.FirstNonEmptyString(c.Token, os.Getenv("PulsarToken")), "\n")
 		c.tokenFunc = func() (string, error) {
 			return c.Token, nil
 		}
@@ -244,7 +243,7 @@ var Config Configuration
 // ReadConfigFile reads configuration file.
 func ReadConfigFile(configFile string) {
 
-	fileBytes, err := ioutil.ReadFile(configFile)
+	fileBytes, err := os.ReadFile(configFile)
 	if err != nil {
 		log.Errorf("failed to load configuration file %s", configFile)
 		panic(err)

@@ -25,7 +25,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -228,6 +228,10 @@ func GetOfflinePodsCounter(subsystem string) prometheus.GaugeOpts {
 	}
 }
 
+const pulsarMetricsPattern = `.*pulsar.*`
+
+var pulsarMetricsRegexp = regexp.MustCompile(pulsarMetricsPattern)
+
 // scrapeLocal scrapes the local metrics
 func scrapeLocal() ([]byte, error) {
 	url := "http://localhost" + GetConfig().PrometheusConfig.Port + "/metrics"
@@ -251,7 +255,7 @@ func scrapeLocal() ([]byte, error) {
 		return []byte{}, err
 	}
 
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		log.Errorf("scrape self's prometheus %s read response body error %v", url, err)
 		return []byte{}, err
@@ -260,10 +264,9 @@ func scrapeLocal() ([]byte, error) {
 	var rc string
 	scanner := bufio.NewScanner(strings.NewReader(string(body)))
 
-	pattern := fmt.Sprintf(`.*pulsar.*`)
 	for scanner.Scan() {
 		text := scanner.Text()
-		matched, err := regexp.MatchString(pattern, text)
+		matched := pulsarMetricsRegexp.MatchString(text)
 		if matched && err == nil {
 			rc = fmt.Sprintf("%s%s\n", rc, text)
 		}
