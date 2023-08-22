@@ -24,19 +24,19 @@ echo "run go build for version ${VERSION}"
 mkdir -p ${DIR}/../bin/releases
 rm -f ${DIR}/../bin/releases/pulsar-heartbeat*
 
+build_os_arch "darwin" "amd64"
+build_os_arch "freebsd" "amd64"
+build_os_arch "freebsd" "arm64"
 build_os_arch "linux" "amd64"
 build_os_arch "linux" "arm"
 build_os_arch "linux" "arm64"
 build_os_arch "linux" "ppc64"
-build_os_arch "darwin" "amd64"
-build_os_arch "windows" "amd64"
-build_os_arch "windows" "arm"
-build_os_arch "windows" "386"
-build_os_arch "solaris" "amd64"
-build_os_arch "freebsd" "amd64"
-build_os_arch "freebsd" "arm64"
 build_os_arch "openbsd" "amd64"
 build_os_arch "openbsd" "arm64"
+build_os_arch "windows" "amd64"
+build_os_arch "windows" "arm"
 
 # Not supported
 # build_os_arch "darwin" "arm64"
+# build_os_arch "solaris" "amd64"
+# build_os_arch "windows" "386"
