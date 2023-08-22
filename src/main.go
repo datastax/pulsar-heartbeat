@@ -40,8 +40,6 @@ var (
 	cfgFile = flag.String("config", "../config/runtime.yml", "config file for monitoring")
 )
 
-type complete struct{} //emptry struct as a single for channel
-
 func main() {
 	// runtime.GOMAXPROCS does not the container's CPU quota in Kubernetes
 	// therefore, it requires to be set explicitly
@@ -53,11 +51,10 @@ func main() {
 	}
 
 	flag.Parse()
-	effectiveCfgFile := util.AssignString(os.Getenv("PULSAR_OPS_MONITOR_CFG"), *cfgFile)
+	effectiveCfgFile := util.FirstNonEmptyString(os.Getenv("PULSAR_OPS_MONITOR_CFG"), *cfgFile)
 	log.Infof("config file %s", effectiveCfgFile)
 	cfg.ReadConfigFile(effectiveCfgFile)
 
-	exit := make(chan *complete)
 	config := cfg.GetConfig()
 
 	cfg.MonitorK8sPulsarCluster()
@@ -72,8 +69,9 @@ func main() {
 	if config.PrometheusConfig.ExposeMetrics {
 		log.Infof("serving metrics on port %s", config.PrometheusConfig.Port)
 		http.Handle("/metrics", promhttp.Handler())
-		http.ListenAndServe(util.AssignString(config.PrometheusConfig.Port, ":8089"), nil)
+		http.ListenAndServe(util.FirstNonEmptyString(config.PrometheusConfig.Port, ":8089"), nil)
 	}
+	exit := make(chan *struct{})
 	for {
 		select {
 		case <-exit:

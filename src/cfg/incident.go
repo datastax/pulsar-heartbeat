@@ -25,7 +25,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"sync"
 	"time"
@@ -138,7 +137,7 @@ func (t *IncidentAlertPolicy) report(component, msg, desc string) bool {
 
 	windowCounts := 0
 	for v := range t.Alerts {
-		if time.Now().Sub(v) < t.EvalWindowSeconds {
+		if time.Since(v) < t.EvalWindowSeconds {
 			windowCounts++
 		} else {
 			//evict expired alert
@@ -321,19 +320,12 @@ func CreateOpsGenieAlert(msg Incident, genieKey string) error {
 	}
 	if err != nil {
 		return err
-	}
-
-	if resp.StatusCode > 300 {
+	} else if resp.StatusCode > 300 {
 		return fmt.Errorf("Create Opsgenie alert returns incorrect status code %d", resp.StatusCode)
 	}
 
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
 	alertResp := OpsGenieAlertCreateResponse{}
-	err = json.Unmarshal(bodyBytes, &alertResp)
+	err = json.NewDecoder(resp.Body).Decode(&alertResp)
 	if err != nil {
 		return err
 	}
@@ -390,13 +382,8 @@ func getOpsGenieAlertID(requestID, genieKey string) (alertID string, err error) 
 		return "", fmt.Errorf("Get Opsgenie alert returns incorrect status code %d", resp.StatusCode)
 	}
 
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
 	alertResp := OpsGenieAlertGetResponse{}
-	err = json.Unmarshal(bodyBytes, &alertResp)
+	err = json.NewDecoder(resp.Body).Decode(&alertResp)
 	if err != nil {
 		return "", err
 	}

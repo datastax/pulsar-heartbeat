@@ -24,7 +24,6 @@ package metering
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -34,7 +33,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-//Usage is the data usage per single tenant
+// Usage is the data usage per single tenant
 type Usage struct {
 	Name             string    `json:"name"`
 	TotalMessagesIn  uint64    `json:"totalMessagesIn"`
@@ -164,14 +163,8 @@ func getTenantStats(burnellURL, token string) (Usages, error) {
 		return nil, err
 	}
 
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		log.Errorf("GET broker topic stats request %s error %v", usageURL, err)
-		return nil, err
-	}
-
 	var usages Usages
-	if err = json.Unmarshal(body, &usages); err != nil {
+	if err = json.NewDecoder(response.Body).Decode(&usages); err != nil {
 		log.Errorf("GET broker topic stats request %s unmarshal error %v", usageURL, err)
 		return nil, err
 	}
@@ -185,11 +178,10 @@ func (t *TenantsUsage) UpdateUsages() {
 	if err != nil {
 		log.Fatalf("failed to get burnell tenants' usage %v", err)
 	}
-	// log.Infof("tenants usage %v", usages)
 
 	// build the latest tenant usage
 	for _, u := range usages {
-		lastUsage, _ := t.tenantLatestUsage[u.Name]
+		lastUsage := t.tenantLatestUsage[u.Name]
 		if t.isInitialized {
 			t.PromGauge(messagesIn30sGaugeType, u.Name, util.ComputeDelta(lastUsage.TotalMessagesIn, u.TotalMessagesIn, 0))
 			t.PromGauge(bytesIn30sGaugeType, u.Name, util.ComputeDelta(lastUsage.TotalBytesIn, u.TotalBytesIn, 0))

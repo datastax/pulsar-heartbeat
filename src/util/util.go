@@ -83,21 +83,21 @@ func ReceiverHeader(h *http.Header) (token, topicFN, pulsarURL string, err bool)
 
 }
 
-// AssignString returns the first non-empty string
+// FirstNonEmptyString returns the first non-empty string
 // It is equivalent the following in Javascript
 // var value = val0 || val1 || val2 || default
-func AssignString(values ...string) string {
+func FirstNonEmptyString(values ...string) string {
 	for _, value := range values {
-		if value != "" {
+		if strings.TrimSpace(value) != "" {
 			return value
 		}
 	}
 	return ""
 }
 
-func TokenSupplierWithOverride(token string, supplier func()(string, error)) func()(string, error) {
+func TokenSupplierWithOverride(token string, supplier func() (string, error)) func() (string, error) {
 	if token != "" {
-		return func()(string, error) {
+		return func() (string, error) {
 			return token, nil
 		}
 	}

@@ -115,7 +115,7 @@ func PubSubLatency(clusterName string, tokenSupplier func() (string, error), uri
 
 	// use the same input topic if outputTopic does not exist
 	// Two topic use case could be for Pulsar function test
-	consumerTopic := util.AssignString(outputTopic, topicName)
+	consumerTopic := util.FirstNonEmptyString(outputTopic, topicName)
 	consumer, err := client.Subscribe(pulsar.ConsumerOptions{
 		Topic:                       consumerTopic,
 		SubscriptionName:            subscriptionName,
@@ -287,7 +287,7 @@ func testTopicLatency(clusterName string, tokenSupplier func() (string, error), 
 		len(payloads), topicCfg.TopicName, topicCfg.PulsarURL, expectedLatency, topicCfg.PayloadSizes, topicCfg.NumOfMessages)
 	result, err := PubSubLatency(clusterName, tokenSupplier, topicCfg.PulsarURL, topicCfg.TopicName, topicCfg.OutputTopic, prefix, topicCfg.ExpectedMsg, payloads, maxPayloadSize)
 
-	testName := util.AssignString(topicCfg.Name, pubSubSubsystem)
+	testName := util.FirstNonEmptyString(topicCfg.Name, pubSubSubsystem)
 	log.Infof("cluster %s has message latency %v", clusterName, result.Latency)
 	if err != nil {
 		errMsg := fmt.Sprintf("cluster %s, %s latency test Pulsar error: %v", clusterName, testName, err)
@@ -334,13 +334,13 @@ func isDowntimeReporting(cfg TopicCfg) bool {
 
 func expectedMessage(payload, expected string) string {
 	if strings.HasPrefix(expected, "$") {
-		return fmt.Sprintf("%s%s", payload, expected[1:len(expected)])
+		return fmt.Sprintf("%s%s", payload, expected[1:])
 	}
 	return payload
 }
 
 func testPartitionTopic(clusterName string, tokenSupplier func() (string, error), cfg TopicCfg) {
-	trustStore := util.AssignString(cfg.TrustStore, GetConfig().TrustStore)
+	trustStore := util.FirstNonEmptyString(cfg.TrustStore, GetConfig().TrustStore)
 	testName := "partition-topics-test"
 	component := clusterName + "-" + testName
 	pt, err := getPartition(cfg, tokenSupplier, trustStore)

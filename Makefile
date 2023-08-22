@@ -20,9 +20,10 @@ all: push
 TAG ?= latest
 PREFIX ?= datastax/pulsar-heartbeat
 BUILD_DIR ?= bin
+OUTPUT_FILE ?= pulsar-heartbeat
 
 build:
-	go build -o $(BUILD_DIR)/pulsar-heartbeat src/main.go
+	go build -o $(BUILD_DIR)/$(OUTPUT_FILE) src/main.go
 
 test:
 	go test ./...

@@ -52,17 +52,34 @@ jobs:
           fail_ci_fi_error: true
 
   build_multiple_os_arch:
-    name: build on multiple OS and arch
     runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 3
+      matrix:
+        include:
+          - os: darwin
+            arch: amd64
+          - os: freebsd
+            arch: amd64
+          - os: freebsd
+            arch: arm64
+          - os: linux
+          - os: openbsd
+            arch: amd64
+          - os: openbsd
+            arch: arm64
+          - os: windows
+            arch: amd64
+          - os: windows
+            arch: arm
     steps:
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.18
+          go-version: 1.20
       - uses: actions/checkout@v3
       - name: build-binary
         run: |
-          cd ./scripts
-          ./build-multi-os-arch.sh
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} OUTPUT_FILE="pulsar-heartbeat-${{ matrix.os }}-${{ matrix.arch }}"
 
   docker:
     name: docker-build

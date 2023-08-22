@@ -28,7 +28,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -65,19 +64,12 @@ func GetBrokers(restBaseURL, clusterName string, tokenSupplier func() (string, e
 	}
 	if err != nil {
 		return nil, err
-	}
-
-	if resp.StatusCode > 300 {
+	} else if resp.StatusCode > 300 {
 		return nil, fmt.Errorf("failed to get a list of brokers, returns incorrect status code %d", resp.StatusCode)
 	}
 
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
 	brokers := []string{}
-	err = json.Unmarshal(bodyBytes, &brokers)
+	err = json.NewDecoder(resp.Body).Decode(&brokers)
 	if err != nil {
 		return nil, err
 	}
@@ -115,20 +107,12 @@ func BrokerTopicsQuery(brokerBaseURL, token string) ([]string, error) {
 	}
 	if err != nil {
 		return nil, err
-	}
-
-	if response.StatusCode != http.StatusOK {
-		return nil, err
-	}
-
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		statsLog.Errorf("GET broker topic stats request %s error %v", topicStatsURL, err)
-		return nil, err
+	} else if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("broker topics response unexcpected status code: %d", response.StatusCode)
 	}
 
 	var namespaces map[string]map[string]map[string]map[string]interface{}
-	if err = json.Unmarshal(body, &namespaces); err != nil {
+	if err = json.NewDecoder(response.Body).Decode(&namespaces); err != nil {
 		return nil, err
 	}
 
@@ -190,7 +174,7 @@ func ConnectBrokerHealthcheckTopic(brokerURL, clusterName, pulsarURL string, tok
 			completeChan <- err
 			return
 		}
-		found = time.Now().Sub(msg.PublishTime()) < 120*time.Second
+		found = time.Since(msg.PublishTime()) < 120*time.Second
 		statsLog.Debugf("Received message : publish time %v %v", msg.PublishTime(), found)
 	}
 
