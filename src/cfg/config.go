@@ -48,7 +48,7 @@ type PrometheusCfg struct {
 
 // SlackCfg is slack configuration
 type SlackCfg struct {
-	AlertURL string `json:"alertUrl"`
+	AlertURL string `json:"alertUrl"` // AlertURL can be overridden with SLACK_ALERT_URL env var
 	Verbose  bool   `json:"verbose"`
 }
 
@@ -62,7 +62,7 @@ type OpsGenieCfg struct {
 
 // PagerDutyCfg is opsGenie configuration
 type PagerDutyCfg struct {
-	IntegrationKey string `json:"integrationKey"`
+	IntegrationKey string `json:"integrationKey"` // IntegrationKey can be overridden with PAGER_DUTY_INTEGRATION_KEY env var
 }
 
 // AnalyticsCfg is analytics usage and statistucs tracking configuration
@@ -198,6 +198,10 @@ func (c *Configuration) Init() {
 		panic("a valid `name` in Configuration must be specified")
 	}
 
+	// env overrides for certain config fields
+	c.PagerDutyConfig.IntegrationKey = util.FirstNonEmptyString(os.Getenv("PAGER_DUTY_INTEGRATION_KEY"), c.PagerDutyConfig.IntegrationKey)
+	c.SlackConfig.AlertURL = util.FirstNonEmptyString(os.Getenv("SLACK_ALERT_URL"), c.SlackConfig.AlertURL)
+
 	if c.TokenOAuthConfig != nil {
 		tokenSrc := c.TokenOAuthConfig.TokenSource(context.Background())
 		c.tokenFunc = func() (string, error) {
@@ -250,30 +254,57 @@ func ReadConfigFile(configFile string) {
 	}
 
 	if hasJSONPrefix(fileBytes) {
-		err = json.Unmarshal(fileBytes, &Config)
-		if err != nil {
+		if err = json.Unmarshal(fileBytes, &Config); err != nil {
 			panic(err)
 		}
 	} else {
-		err = yaml.Unmarshal(fileBytes, &Config)
-		if err != nil {
+		if err = yaml.Unmarshal(fileBytes, &Config); err != nil {
 			panic(err)
 		}
 	}
 	Config.Init()
-	log.Infof("config %v", Config)
+	logConfig(Config)
 }
 
-var jsonPrefix = []byte("{")
+// logConfig prints the config at the 'debug' level after removing sensitive fields
+func logConfig(c Configuration) {
+	const hideSecret = "******"
+	if c.AnalyticsConfig.APIKey != "" {
+		c.AnalyticsConfig.APIKey = hideSecret
+	}
+	if c.AnalyticsConfig.InsightsWriteKey != "" {
+		c.AnalyticsConfig.InsightsWriteKey = hideSecret
+	}
+	if c.TokenOAuthConfig != nil && c.TokenOAuthConfig.ClientSecret != "" {
+		c.TokenOAuthConfig.ClientSecret = hideSecret
+	}
+	if c.PagerDutyConfig.IntegrationKey != "" {
+		c.PagerDutyConfig.IntegrationKey = hideSecret
+	}
+	if c.SlackConfig.AlertURL != "" {
+		c.SlackConfig.AlertURL = hideSecret
+	}
+	if c.OpsGenieConfig.AlertKey != "" {
+		c.OpsGenieConfig.AlertKey = hideSecret
+	}
+	if c.PrometheusConfig.PrometheusProxyAPIKey != "" {
+		c.PrometheusConfig.PrometheusProxyAPIKey = hideSecret
+	}
+	if c.PulsarAdminConfig.Token != "" {
+		c.PulsarAdminConfig.Token = hideSecret
+	}
+	log.Debugf("config: \n%v", c)
+}
 
 func hasJSONPrefix(buf []byte) bool {
+	const jsonPrefix = "{"
 	return hasPrefix(buf, jsonPrefix)
 }
 
 // Return true if the first non-whitespace bytes in buf is prefix.
-func hasPrefix(buf []byte, prefix []byte) bool {
-	trim := bytes.TrimLeftFunc(buf, unicode.IsSpace)
-	return bytes.HasPrefix(trim, prefix)
+func hasPrefix(buf []byte, prefix string) bool {
+	trimmedBuf := bytes.TrimLeftFunc(buf, unicode.IsSpace)
+	return bytes.HasPrefix(trimmedBuf, []byte(prefix))
 }
 
 // GetConfig returns a reference to the Configuration
