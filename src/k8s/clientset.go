@@ -215,13 +215,21 @@ func (c *Client) UpdateReplicas(namespace string) error {
 	if err != nil {
 		return err
 	}
-	c.Zookeeper.Replicas = *(zk.Items[0]).Spec.Replicas
+	if len(zk.Items) > 0 {
+		c.Zookeeper.Replicas = *(zk.Items[0]).Spec.Replicas
+	} else {
+		c.Zookeeper.Replicas = 0
+	}
 
 	bk, err := c.getStatefulSets(namespace, BookkeeperSts)
 	if err != nil {
 		return err
 	}
-	c.Bookkeeper.Replicas = *(bk.Items[0]).Spec.Replicas
+	if len(bk.Items) > 0 {
+		c.Bookkeeper.Replicas = *(bk.Items[0]).Spec.Replicas
+	} else {
+		c.Bookkeeper.Replicas = 0
+	}
 
 	return nil
 }
