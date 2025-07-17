@@ -67,7 +67,7 @@ func TenantsGaugeOpt() prometheus.GaugeOpts {
 		Namespace: "pulsar",
 		Subsystem: "tenant",
 		Name:      "size",
-		Help:      "Plusar rest api tenant counts",
+		Help:      "Pulsar rest api tenant counts",
 	}
 }
 
@@ -127,7 +127,7 @@ func FuncLatencyGaugeOpt() prometheus.GaugeOpts {
 		Namespace: "pulsar",
 		Subsystem: "function",
 		Name:      "latency_ms",
-		Help:      "Plusar message latency in ms",
+		Help:      "Pulsar message latency in ms",
 	}
 }
 
@@ -202,14 +202,14 @@ func getMetricKey(opt prometheus.GaugeOpts) string {
 // GetGaugeType get the Prometheus Gauge Option based on type/subsystem
 func GetGaugeType(nameType string) prometheus.GaugeOpts {
 	if nameType == funcTopicSubsystem || strings.HasPrefix(nameType, "func_topic") {
-		return MsgLatencyGaugeOpt(funcTopicSubsystem, "Plusar function input output topic latency in ms")
+		return MsgLatencyGaugeOpt(funcTopicSubsystem, "Pulsar function input output topic latency in ms")
 	}
 
 	if nameType == websocketSubsystem {
-		return MsgLatencyGaugeOpt(websocketSubsystem, "Plusar websocket pubsub topic latency in ms")
+		return MsgLatencyGaugeOpt(websocketSubsystem, "Pulsar websocket pubsub topic latency in ms")
 	}
 
-	return MsgLatencyGaugeOpt(pubSubSubsystem, "Plusar pubsub message latency in ms")
+	return MsgLatencyGaugeOpt(pubSubSubsystem, "Pulsar pubsub message latency in ms")
 }
 
 // GetOfflinePodsCounter returns prometheus GaugeOpts for kubernetes cluster pod offline counter

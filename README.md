@@ -30,7 +30,7 @@ Here is a list of features that Pulsar Heartbeat supports.
 - [x] monitor multiple Pulsar clusters (with no kubernetes pods monitoring)
 - [x] co-resident monitoring within the same Pulsar Kubernetes cluster
 
-This is a data driven tool that sources configuration from a yaml or json file. Here is a [template](config/runtime_template.yml).
+This is a data driven tool that sources configuration from a yaml or json file. Here is a [template](config/runtime-template.yml).
 The configuration json file can be specified in the overwrite order of
 - an environment variable `PULSAR_OPS_MONITOR_CFG`
 - an command line argument `./pulsar-heartbeat -config /path/to/pulsar_ops_monitor_config.yml`
