@@ -35,7 +35,7 @@ import (
 	"github.com/datastax/pulsar-heartbeat/src/util"
 
 	"github.com/apex/log"
-	"github.com/ghodss/yaml"
+	"sigs.k8s.io/yaml"
 )
 
 // PrometheusCfg configures Premetheus set up
