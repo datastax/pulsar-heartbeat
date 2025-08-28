@@ -1,5 +1,5 @@
 # multi-stage build
-FROM debian:11 AS proot
+FROM debian:12 AS proot
 RUN apt-get update && apt-get install -q -y build-essential git libseccomp-dev libtalloc-dev \
  # deps for PERSISTENT_CHOWN extension
  libprotobuf-c-dev libattr1-dev
@@ -9,14 +9,14 @@ RUN git clone https://github.com/rootless-containers/PRoot.git \
   && cd src \
   && make && mv proot / && make clean
 
-FROM golang:1.18-alpine AS runc
+FROM golang:1.24-alpine AS runc
 RUN apk add --no-cache git g++ linux-headers
 RUN go install github.com/opencontainers/runc@latest
 
 #
 # build stage
 #
-FROM golang:1.18-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Add Maintainer Info
 LABEL maintainer="ming"
@@ -38,7 +38,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build make build
 #
 # Start a new stage from scratch
 #
-FROM alpine:3.15
+FROM alpine:3.22
 RUN adduser -u 1000 -S user -G root
 COPY --from=proot --chown=1000:0 /proot /home/user/.runrootless/runrootless-proot
 COPY --from=runc --chown=1000:0 /go/bin/runc /home/user/bin/runc

@@ -12,6 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Try to use podman if docker isn't installed
+CONTAINER_CMD := $(shell if command -v docker > /dev/null 2>&1; then \
+                      echo docker; \
+                   elif command -v podman > /dev/null 2>&1; then \
+                      echo podman; \
+                   else \
+                      echo ""; \
+                   fi)
+ifeq ($(CONTAINER_CMD),)
+$(warning "Neither docker nor podman is installed.")
+endif
+
 all: push
 
 #
@@ -29,12 +41,12 @@ test:
 	go test ./...
 
 container:
-	docker build -t $(PREFIX):$(TAG) .
-	docker tag $(PREFIX):$(TAG) ${PREFIX}:latest
+	$(CONTAINER_CMD) build -t $(PREFIX):$(TAG) .
+	$(CONTAINER_CMD) tag $(PREFIX):$(TAG) ${PREFIX}:latest
 
-push: container
-	docker push $(PREFIX):$(TAG)
-	docker push $(PREFIX):latest
+push:
+	$(CONTAINER_CMD) push $(PREFIX):$(TAG)
+	$(CONTAINER_CMD) push $(PREFIX):latest
 
 clean:
 	rm $(BUILD_DIR)/*
