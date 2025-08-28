@@ -27,6 +27,7 @@ package cfg
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -223,7 +224,7 @@ func EvaluateBrokers(urlPrefix, clusterName, pulsarURL string, tokenSupplier fun
 
 	statsLog.Infof("cluster %s has %d failed brokers out of total %d brokers", clusterName, failedBrokers, len(brokers))
 	if errStr != "" {
-		return failedBrokers, fmt.Errorf(errStr)
+		return failedBrokers, errors.New(errStr)
 	}
 
 	return failedBrokers, nil

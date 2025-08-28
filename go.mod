@@ -1,6 +1,6 @@
 module github.com/datastax/pulsar-heartbeat
 
-go 1.18
+go 1.24
 
 require (
 	github.com/PagerDuty/go-pagerduty v1.6.0

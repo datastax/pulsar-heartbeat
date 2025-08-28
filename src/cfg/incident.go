@@ -24,6 +24,7 @@ package cfg
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -286,7 +287,7 @@ func opsGenieHTTP(method, endpoint, genieKey string, payload *bytes.Buffer) (*ht
 	if genieKey == "" {
 		errStr := fmt.Sprintf("Alert creation failed. %s has not configured with genieKey.", GetConfig().Name)
 		Alert(errStr)
-		return nil, fmt.Errorf(errStr)
+		return nil, errors.New(errStr)
 	}
 
 	client := retryablehttp.NewClient()
