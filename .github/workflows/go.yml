@@ -44,7 +44,7 @@ jobs:
           GOPATH: /home/runner/work/pulsar-heartbeat/go
       - name: Upload Coverage
         if: github.repository == 'datastax/pulsar-heartbeat'
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with :
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage.txt
