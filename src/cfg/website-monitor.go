@@ -26,9 +26,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/antonmedv/expr"
 	"github.com/apex/log"
 	"github.com/datastax/pulsar-heartbeat/src/util"
+	"github.com/expr-lang/expr"
 	"github.com/hashicorp/go-retryablehttp"
 )
 
