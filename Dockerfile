@@ -43,7 +43,7 @@ RUN adduser -u 1000 -S user -G root
 COPY --from=proot --chown=1000:0 /proot /home/user/.runrootless/runrootless-proot
 COPY --from=runc --chown=1000:0 /go/bin/runc /home/user/bin/runc
 
-RUN apk --no-cache add ca-certificates
+RUN apk update && apk upgrade busybox busybox-binsh && apk add ca-certificates --no-cache
 COPY --from=builder --chown=1000:0 /root/bin/pulsar-heartbeat /home/user
 
 # Copy debug tools
