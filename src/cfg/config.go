@@ -60,9 +60,17 @@ type OpsGenieCfg struct {
 	IntervalSeconds int    `json:"intervalSeconds"`
 }
 
-// PagerDutyCfg is opsGenie configuration
+// PagerDutyCfg is PagerDuty configuration
 type PagerDutyCfg struct {
 	IntegrationKey string `json:"integrationKey"` // IntegrationKey can be overridden with PAGER_DUTY_INTEGRATION_KEY env var
+}
+
+// IBMOCMCfg is IBM Operations Center Management configuration
+type IBMOCMCfg struct {
+	WebhookURL  string `json:"webhookUrl"`  // WebhookURL can be overridden with IBM_OCM_WEBHOOK_URL env var
+	APIBaseURL  string `json:"apiBaseUrl"`  // APIBaseURL can be overridden with IBM_OCM_API_BASE_URL env var
+	APIUser     string `json:"apiUser"`     // APIUser can be overridden with IBM_OCM_API_USER env var
+	APIPassword string `json:"apiPassword"` // APIPassword can be overridden with IBM_OCM_API_PASSWORD env var
 }
 
 // AnalyticsCfg is analytics usage and statistucs tracking configuration
@@ -184,6 +192,7 @@ type Configuration struct {
 	SlackConfig       SlackCfg           `json:"slackConfig"`
 	OpsGenieConfig    OpsGenieCfg        `json:"opsGenieConfig"`
 	PagerDutyConfig   PagerDutyCfg       `json:"pagerDutyConfig"`
+	IBMOCMConfig      IBMOCMCfg          `json:"ibmOCMConfig"`
 	PulsarAdminConfig PulsarAdminRESTCfg `json:"pulsarAdminRestConfig"`
 	PulsarTopicConfig []TopicCfg         `json:"pulsarTopicConfig"`
 	SitesConfig       SitesCfg           `json:"sitesConfig"`
@@ -200,6 +209,10 @@ func (c *Configuration) Init() {
 
 	// env overrides for certain config fields
 	c.PagerDutyConfig.IntegrationKey = util.FirstNonEmptyString(os.Getenv("PAGER_DUTY_INTEGRATION_KEY"), c.PagerDutyConfig.IntegrationKey)
+	c.IBMOCMConfig.WebhookURL = util.FirstNonEmptyString(os.Getenv("IBM_OCM_WEBHOOK_URL"), c.IBMOCMConfig.WebhookURL)
+	c.IBMOCMConfig.APIBaseURL = util.FirstNonEmptyString(os.Getenv("IBM_OCM_API_BASE_URL"), c.IBMOCMConfig.APIBaseURL)
+	c.IBMOCMConfig.APIUser = util.FirstNonEmptyString(os.Getenv("IBM_OCM_API_USER"), c.IBMOCMConfig.APIUser)
+	c.IBMOCMConfig.APIPassword = util.FirstNonEmptyString(os.Getenv("IBM_OCM_API_PASSWORD"), c.IBMOCMConfig.APIPassword)
 	c.SlackConfig.AlertURL = util.FirstNonEmptyString(os.Getenv("SLACK_ALERT_URL"), c.SlackConfig.AlertURL)
 
 	if c.TokenOAuthConfig != nil {
@@ -280,6 +293,9 @@ func logConfig(c Configuration) {
 	}
 	if c.PagerDutyConfig.IntegrationKey != "" {
 		c.PagerDutyConfig.IntegrationKey = hideSecret
+	}
+	if c.IBMOCMConfig.WebhookURL != "" {
+		c.IBMOCMConfig.WebhookURL = hideSecret
 	}
 	if c.SlackConfig.AlertURL != "" {
 		c.SlackConfig.AlertURL = hideSecret

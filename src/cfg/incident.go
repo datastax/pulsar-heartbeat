@@ -256,6 +256,14 @@ func CreateIncident(component, alias, msg, desc, priority string) {
 			Alert(fmt.Sprintf("from %s PagerDuty report incident error %v", component, err))
 		}
 	}
+
+	if GetConfig().IBMOCMConfig.WebhookURL != "" {
+		cfg := GetConfig().IBMOCMConfig
+		err := CreateIBMOCMIncident(component, alias, msg, cfg.WebhookURL, cfg.APIBaseURL, cfg.APIUser, cfg.APIPassword)
+		if err != nil {
+			Alert(fmt.Sprintf("from %s IBM OCM report incident error %v", component, err))
+		}
+	}
 }
 
 // RemoveIncident removes an existing incident
@@ -279,7 +287,15 @@ func RemoveIncident(component string) {
 			}
 		}
 
-		ResolvePDIncident(component, record.alertID, GetConfig().PagerDutyConfig.IntegrationKey)
+		if GetConfig().PagerDutyConfig.IntegrationKey != "" {
+			ResolvePDIncident(component, record.alertID, GetConfig().PagerDutyConfig.IntegrationKey)
+		}
+
+		if GetConfig().IBMOCMConfig.WebhookURL != "" {
+			cfg := GetConfig().IBMOCMConfig
+			// record.requestID contains the deduplicationKey, record.alertID contains the eventID
+			ResolveIBMOCMIncident(component, record.requestID, record.alertID, cfg.APIBaseURL, cfg.APIUser, cfg.APIPassword)
+		}
 	}
 }
 
