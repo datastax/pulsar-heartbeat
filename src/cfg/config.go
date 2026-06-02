@@ -60,7 +60,7 @@ type OpsGenieCfg struct {
 	IntervalSeconds int    `json:"intervalSeconds"`
 }
 
-// PagerDutyCfg is PagerDuty configuration
+// PagerDutyCfg is opsGenie configuration
 type PagerDutyCfg struct {
 	IntegrationKey string `json:"integrationKey"` // IntegrationKey can be overridden with PAGER_DUTY_INTEGRATION_KEY env var
 }

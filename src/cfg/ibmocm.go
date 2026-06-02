@@ -56,11 +56,11 @@ type IBMOCMEvent struct {
 
 // IBMOCMWebhookResponse represents the response from IBM OCM webhook
 type IBMOCMWebhookResponse struct {
-	DeduplicationKey string `json:"deduplicationKey"` // IBM OCM's generated deduplication key
-	EventID          string `json:"eventid"`          // IBM OCM's event ID
-	Status           string `json:"status,omitempty"` // Optional status field
+	DeduplicationKey string `json:"deduplicationKey"`  // IBM OCM's generated deduplication key
+	EventID          string `json:"eventid"`           // IBM OCM's event ID
+	Status           string `json:"status,omitempty"`  // Optional status field
 	Message          string `json:"message,omitempty"` // Optional message field
-	Error            string `json:"error,omitempty"`  // error message if any
+	Error            string `json:"error,omitempty"`   // error message if any
 }
 
 // IBMOCMEventDetails represents the event details from Events API
@@ -192,14 +192,15 @@ func ResolveIBMOCMIncident(component, dedupKey, eventID, apiBaseURL, apiUser, ap
 // getIBMOCMIncidentUUID queries the Events API to get the incident UUID
 func getIBMOCMIncidentUUID(dedupKey, eventID, apiBaseURL, apiUser, apiPassword string) (string, error) {
 	// Build the Events API URL with query parameters
+	// URL encode the parameters to handle special characters
 	eventsURL := fmt.Sprintf("%s/api/events/v1?deduplicationKey=%s&eventid=%s",
-		strings.TrimSuffix(apiBaseURL, "/"), dedupKey, eventID)
+		strings.TrimSuffix(apiBaseURL, "/"), url.QueryEscape(dedupKey), url.QueryEscape(eventID))
 
 	client := retryablehttp.NewClient()
 	client.HTTPClient.Timeout = time.Duration(10) * time.Second
 	client.RetryWaitMin = 2 * time.Second
 	client.RetryWaitMax = 30 * time.Second
-	client.RetryMax = 3
+	client.RetryMax = 2
 
 	req, err := retryablehttp.NewRequest(http.MethodGet, eventsURL, nil)
 	if err != nil {
@@ -253,7 +254,7 @@ func resolveIBMOCMIncidentByUUID(incidentUUID, apiBaseURL, apiUser, apiPassword 
 	client.HTTPClient.Timeout = time.Duration(10) * time.Second
 	client.RetryWaitMin = 2 * time.Second
 	client.RetryWaitMax = 30 * time.Second
-	client.RetryMax = 3
+	client.RetryMax = 2
 
 	req, err := retryablehttp.NewRequest(http.MethodPost, incidentURL, bytes.NewBuffer(payload))
 	if err != nil {
@@ -296,7 +297,7 @@ func sendIBMOCMWebhookEvent(webhookURL string, event *IBMOCMEvent) (*IBMOCMWebho
 	client.HTTPClient.Timeout = time.Duration(10) * time.Second
 	client.RetryWaitMin = 2 * time.Second
 	client.RetryWaitMax = 30 * time.Second
-	client.RetryMax = 3
+	client.RetryMax = 2
 
 	req, err := retryablehttp.NewRequest(http.MethodPost, webhookURL, bytes.NewBuffer(payload))
 	if err != nil {
