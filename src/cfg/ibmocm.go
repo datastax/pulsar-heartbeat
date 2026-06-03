@@ -107,6 +107,16 @@ func validateWebhookURL(webhookURL string) error {
 	return nil
 }
 
+// createRetryableHTTPClient creates a configured HTTP client with retry logic
+func createRetryableHTTPClient() *retryablehttp.Client {
+    client := retryablehttp.NewClient()
+    client.HTTPClient.Timeout = time.Duration(10) * time.Second
+    client.RetryWaitMin = 2 * time.Second
+    client.RetryWaitMax = 30 * time.Second
+    client.RetryMax = 2
+    return client
+}
+
 // CreateIBMOCMIncident creates an IBM OCM incident via webhook
 // Returns error if creation fails
 func CreateIBMOCMIncident(component, alias, msg, webhookURL, apiBaseURL, apiUser, apiPassword string) error {
@@ -196,11 +206,7 @@ func getIBMOCMIncidentUUID(dedupKey, eventID, apiBaseURL, apiUser, apiPassword s
 	eventsURL := fmt.Sprintf("%s/api/events/v1?deduplicationKey=%s&eventid=%s",
 		strings.TrimSuffix(apiBaseURL, "/"), url.QueryEscape(dedupKey), url.QueryEscape(eventID))
 
-	client := retryablehttp.NewClient()
-	client.HTTPClient.Timeout = time.Duration(10) * time.Second
-	client.RetryWaitMin = 2 * time.Second
-	client.RetryWaitMax = 30 * time.Second
-	client.RetryMax = 2
+	client := createRetryableHTTPClient()
 
 	req, err := retryablehttp.NewRequest(http.MethodGet, eventsURL, nil)
 	if err != nil {
@@ -250,11 +256,7 @@ func resolveIBMOCMIncidentByUUID(incidentUUID, apiBaseURL, apiUser, apiPassword 
 		return fmt.Errorf("failed to marshal incident update: %v", err)
 	}
 
-	client := retryablehttp.NewClient()
-	client.HTTPClient.Timeout = time.Duration(10) * time.Second
-	client.RetryWaitMin = 2 * time.Second
-	client.RetryWaitMax = 30 * time.Second
-	client.RetryMax = 2
+	client := createRetryableHTTPClient()
 
 	req, err := retryablehttp.NewRequest(http.MethodPost, incidentURL, bytes.NewBuffer(payload))
 	if err != nil {
@@ -293,11 +295,7 @@ func sendIBMOCMWebhookEvent(webhookURL string, event *IBMOCMEvent) (*IBMOCMWebho
 		return nil, err
 	}
 
-	client := retryablehttp.NewClient()
-	client.HTTPClient.Timeout = time.Duration(10) * time.Second
-	client.RetryWaitMin = 2 * time.Second
-	client.RetryWaitMax = 30 * time.Second
-	client.RetryMax = 2
+	client := createRetryableHTTPClient()
 
 	req, err := retryablehttp.NewRequest(http.MethodPost, webhookURL, bytes.NewBuffer(payload))
 	if err != nil {
