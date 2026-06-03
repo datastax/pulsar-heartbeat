@@ -297,6 +297,9 @@ func logConfig(c Configuration) {
 	if c.IBMOCMConfig.WebhookURL != "" {
 		c.IBMOCMConfig.WebhookURL = hideSecret
 	}
+	if c.IBMOCMConfig.APIBaseURL != "" {
+        c.IBMOCMConfig.APIBaseURL = hideSecret
+    }
 	if c.IBMOCMConfig.APIUser != "" {
 		c.IBMOCMConfig.APIUser = hideSecret
 	}
