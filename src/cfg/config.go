@@ -297,6 +297,13 @@ func logConfig(c Configuration) {
 	if c.IBMOCMConfig.WebhookURL != "" {
 		c.IBMOCMConfig.WebhookURL = hideSecret
 	}
+	if c.IBMOCMConfig.APIUser != "" {
+		c.IBMOCMConfig.APIUser = hideSecret
+	}
+	if c.IBMOCMConfig.APIPassword != "" {
+		c.IBMOCMConfig.APIPassword = hideSecret
+	}
+	
 	if c.SlackConfig.AlertURL != "" {
 		c.SlackConfig.AlertURL = hideSecret
 	}

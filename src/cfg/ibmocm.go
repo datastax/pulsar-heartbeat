@@ -110,7 +110,7 @@ func validateWebhookURL(webhookURL string) error {
 // createRetryableHTTPClient creates a configured HTTP client with retry logic
 func createRetryableHTTPClient() *retryablehttp.Client {
     client := retryablehttp.NewClient()
-    client.HTTPClient.Timeout = time.Duration(10) * time.Second
+    client.HTTPClient.Timeout = 10 * time.Second
     client.RetryWaitMin = 2 * time.Second
     client.RetryWaitMax = 30 * time.Second
     client.RetryMax = 2
@@ -121,6 +121,7 @@ func createRetryableHTTPClient() *retryablehttp.Client {
 // Returns error if creation fails
 func CreateIBMOCMIncident(component, alias, msg, webhookURL, apiBaseURL, apiUser, apiPassword string) error {
 	if webhookURL == "" {
+		log.Warnf("IBM OCM webhookURL not configured, skipping incident creation for %s, %s", component, msg)
 		return nil
 	}
 
