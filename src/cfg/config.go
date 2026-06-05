@@ -29,7 +29,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
-
+	"fmt"
+	"net/url"
 	"golang.org/x/oauth2/clientcredentials"
 
 	"github.com/datastax/pulsar-heartbeat/src/util"
@@ -215,6 +216,12 @@ func (c *Configuration) Init() {
 	c.IBMOCMConfig.APIPassword = util.FirstNonEmptyString(os.Getenv("IBM_OCM_API_PASSWORD"), c.IBMOCMConfig.APIPassword)
 	c.SlackConfig.AlertURL = util.FirstNonEmptyString(os.Getenv("SLACK_ALERT_URL"), c.SlackConfig.AlertURL)
 
+    // Validate IBM OCM webhook URL if configured
+	if c.IBMOCMConfig.WebhookURL != "" {
+		if err := validateWebhookURL(c.IBMOCMConfig.WebhookURL); err != nil {
+			log.Errorf("Invalid IBM OCM webhook URL in configuration: %v", err)
+		}
+	}
 	if c.TokenOAuthConfig != nil {
 		tokenSrc := c.TokenOAuthConfig.TokenSource(context.Background())
 		c.tokenFunc = func() (string, error) {
@@ -239,6 +246,34 @@ func (c *Configuration) Init() {
 			return c.Token, nil
 		}
 	}
+}
+
+// validateWebhookURL validates the webhook URL format and security
+func validateWebhookURL(webhookURL string) error {
+	if webhookURL == "" {
+		return nil // empty is valid (feature disabled)
+	}
+
+	// Validate URL format first
+	parsedURL, err := url.Parse(webhookURL)
+	if err != nil {
+		return fmt.Errorf("invalid webhook URL format: %v", err)
+	}
+
+	// Ensure host is present
+	if parsedURL.Host == "" {
+		return fmt.Errorf("webhook URL must include a valid host")
+	}
+
+	// Enforce HTTPS for security (except localhost/127.0.0.1 for testing)
+	isLocalhost := strings.HasPrefix(parsedURL.Host, "localhost:") ||
+		strings.HasPrefix(parsedURL.Host, "127.0.0.1:")
+
+	if !strings.HasPrefix(webhookURL, "https://") && !isLocalhost {
+		return fmt.Errorf("webhook URL must use HTTPS, got: %s", webhookURL)
+	}
+
+	return nil
 }
 
 func (c *Configuration) TokenSupplier() func() (string, error) {
@@ -299,14 +334,13 @@ func logConfig(c Configuration) {
 	}
 	if c.IBMOCMConfig.APIBaseURL != "" {
         c.IBMOCMConfig.APIBaseURL = hideSecret
-    }
+}
 	if c.IBMOCMConfig.APIUser != "" {
 		c.IBMOCMConfig.APIUser = hideSecret
 	}
 	if c.IBMOCMConfig.APIPassword != "" {
 		c.IBMOCMConfig.APIPassword = hideSecret
-	}
-	
+	}	
 	if c.SlackConfig.AlertURL != "" {
 		c.SlackConfig.AlertURL = hideSecret
 	}

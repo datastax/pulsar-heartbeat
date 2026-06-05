@@ -79,34 +79,6 @@ type IBMOCMIncidentUpdate struct {
 	State string `json:"state"` // "resolved", "acknowledged", etc.
 }
 
-// validateWebhookURL validates the webhook URL format and security
-func validateWebhookURL(webhookURL string) error {
-	if webhookURL == "" {
-		return nil // empty is valid (feature disabled)
-	}
-
-	// Validate URL format first
-	parsedURL, err := url.Parse(webhookURL)
-	if err != nil {
-		return fmt.Errorf("invalid webhook URL format: %v", err)
-	}
-
-	// Ensure host is present
-	if parsedURL.Host == "" {
-		return fmt.Errorf("webhook URL must include a valid host")
-	}
-
-	// Enforce HTTPS for security (except localhost/127.0.0.1 for testing)
-	isLocalhost := strings.HasPrefix(parsedURL.Host, "localhost:") ||
-		strings.HasPrefix(parsedURL.Host, "127.0.0.1:")
-
-	if !strings.HasPrefix(webhookURL, "https://") && !isLocalhost {
-		return fmt.Errorf("webhook URL must use HTTPS, got: %s", webhookURL)
-	}
-
-	return nil
-}
-
 // createRetryableHTTPClient creates a configured HTTP client with retry logic
 func createRetryableHTTPClient() *retryablehttp.Client {
     client := retryablehttp.NewClient()
@@ -123,12 +95,6 @@ func CreateIBMOCMIncident(component, alias, msg, webhookURL, apiBaseURL, apiUser
 	if webhookURL == "" {
 		log.Warnf("IBM OCM webhookURL not configured, skipping incident creation for %s, %s", component, msg)
 		return nil
-	}
-
-	// Validate webhook URL
-	if err := validateWebhookURL(webhookURL); err != nil {
-		log.Errorf("IBM OCM webhook URL validation failed: %v", err)
-		return err
 	}
 
 	event := IBMOCMEvent{
