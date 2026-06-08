@@ -294,7 +294,11 @@ func RemoveIncident(component string) {
 		if GetConfig().IBMOCMConfig.WebhookURL != "" {
 			cfg := GetConfig().IBMOCMConfig
 			// record.requestID contains the deduplicationKey, record.alertID contains the eventID
-			ResolveIBMOCMIncident(component, record.requestID, record.alertID, cfg.APIBaseURL, cfg.APIUser, cfg.APIPassword)
+			err := ResolveIBMOCMIncident(component, record.requestID, record.alertID, cfg.APIBaseURL, cfg.APIUser, cfg.APIPassword)
+			if err != nil {
+				log.Errorf("Failed to resolve IBM OCM incident for component %s (deduplicationKey: %s, eventID: %s): %v",
+					component, record.requestID, record.alertID, err)
+			}
 		}
 	}
 }
