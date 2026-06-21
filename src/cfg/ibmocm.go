@@ -81,25 +81,24 @@ type IBMOCMIncidentUpdate struct {
 
 // createRetryableHTTPClient creates a configured HTTP client with retry logic
 func createRetryableHTTPClient() *retryablehttp.Client {
-    client := retryablehttp.NewClient()
-    client.HTTPClient.Timeout = 10 * time.Second
-    client.RetryWaitMin = 2 * time.Second
-    client.RetryWaitMax = 30 * time.Second
-    client.RetryMax = 2
-    return client
+	client := retryablehttp.NewClient()
+	client.HTTPClient.Timeout = 10 * time.Second
+	client.RetryWaitMin = 2 * time.Second
+	client.RetryWaitMax = 30 * time.Second
+	client.RetryMax = 2
+	return client
 }
 
 // CreateIBMOCMIncident creates an IBM OCM incident via webhook
-// Returns error if creation fails
-func CreateIBMOCMIncident(component, alias, msg, webhookURL, apiBaseURL, apiUser, apiPassword string) error {
+func CreateIBMOCMIncident(component, alias, msg, clusterName, webhookURL, apiBaseURL, apiUser, apiPassword string) error {
 	if webhookURL == "" {
-		log.Warnf("IBM OCM webhookURL not configured, skipping incident creation for %s, %s", component, msg)
+		log.Infof("logging: webhookURL not configured, skipping incident creation for %s, component: %s, cluster: %s", msg, component, clusterName)
 		return nil
 	}
 
 	event := IBMOCMEvent{
 		Action:      ocmTrigger,
-		Summary:     component + ": " + msg,
+		Summary:     clusterName + ": " + component + ": " + msg,
 		Source:      "pulsar-heartbeat",
 		Severity:    "critical",
 		Component:   component,
@@ -129,7 +128,7 @@ func CreateIBMOCMIncident(component, alias, msg, webhookURL, apiBaseURL, apiUser
 	defer incidentsLock.Unlock()
 	incidents[component] = incident
 
-	log.Infof("IBM OCM incident created for %s with deduplicationKey: %s, eventID: %s",
+	log.Infof("logging: incident created - component: %s, dedupKey: %s, eventID: %s",
 		component, resp.DeduplicationKey, resp.EventID)
 	return nil
 }
@@ -140,29 +139,29 @@ func CreateIBMOCMIncident(component, alias, msg, webhookURL, apiBaseURL, apiUser
 // 3. Call Incident Management API to resolve the incident
 func ResolveIBMOCMIncident(component, dedupKey, eventID, apiBaseURL, apiUser, apiPassword string) error {
 	if apiBaseURL == "" || apiUser == "" || apiPassword == "" {
-		log.Warnf("IBM OCM API credentials not configured, skipping resolution for %s", component)
+		log.Warnf("logging: API credentials not configured, skipping resolution for component: %s, dedupKey: %s, eventID: %s", component, dedupKey, eventID)
 		return nil
 	}
 
 	// Step 1: Query Events API to get incidentUuid
 	incidentUUID, err := getIBMOCMIncidentUUID(dedupKey, eventID, apiBaseURL, apiUser, apiPassword)
 	if err != nil {
-		log.Errorf("Failed to get incident UUID for %s: %v", component, err)
+		log.Errorf("logging: failed to get incident UUID for component %s: %v, dedupKey: %s, eventID: %s", component, err, dedupKey, eventID)
 		return err
 	}
 
 	if incidentUUID == "" {
-		return fmt.Errorf("no incident UUID found for component %s", component)
+		return fmt.Errorf("logging: no incident UUID found for component: %s", component)
 	}
 
 	// Step 2: Resolve the incident using Incident Management API
 	err = resolveIBMOCMIncidentByUUID(incidentUUID, apiBaseURL, apiUser, apiPassword)
 	if err != nil {
-		log.Errorf("Failed to resolve incident %s for %s: %v", incidentUUID, component, err)
+		log.Errorf("logging: failed to resolve incident %s for component %s: %v, dedupKey: %s, eventID: %s, incidentId: %s", component, err, dedupKey, eventID, incidentUUID)
 		return err
 	}
-
-	log.Infof("IBM OCM incident resolved for %s (incidentUuid: %s)", component, incidentUUID)
+	
+	log.Infof("logging: incident resolved for component: %s, dedupKey: %s, eventID: %s, incidentId: %s", component, dedupKey, eventID, incidentUUID)
 	return nil
 }
 
@@ -204,7 +203,7 @@ func getIBMOCMIncidentUUID(dedupKey, eventID, apiBaseURL, apiUser, apiPassword s
 		return "", fmt.Errorf("no incidentUuid in Events API response")
 	}
 
-	log.Infof("Retrieved incident UUID: %s for deduplicationKey: %s", eventDetails.IncidentUUID, dedupKey)
+	log.Infof("logging: retrieved incident UUID from Events API for dedupKey: %s, eventID: %s, incidentId: %s", dedupKey, eventID, eventDetails.IncidentUUID)
 	return eventDetails.IncidentUUID, nil
 }
 
@@ -238,15 +237,15 @@ func resolveIBMOCMIncidentByUUID(incidentUUID, apiBaseURL, apiUser, apiPassword 
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to call Incident Management API: %v", err)
+		return fmt.Errorf("failed to call Incident Management API: %v for incidentId: %s", err, incidentUUID)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("Incident Management API returned status code %d", resp.StatusCode)
+		return fmt.Errorf("Incident Management API returned status code %d for incidentId: %s", resp.StatusCode, incidentUUID)
 	}
 
-	log.Infof("Successfully resolved incident %s via Incident Management API", incidentUUID)
+	log.Infof("logging: successfully resolved incident via Incident Management API for incidentId: %s", incidentUUID)
 	return nil
 }
 
@@ -258,7 +257,7 @@ func sendIBMOCMWebhookEvent(webhookURL string, event *IBMOCMEvent) (*IBMOCMWebho
 
 	payload, err := json.Marshal(event)
 	if err != nil {
-		log.Errorf("failed to marshal IBM OCM event: %v", err)
+		log.Errorf("logging: failed to marshal event: %v", err)
 		return nil, err
 	}
 
@@ -266,7 +265,7 @@ func sendIBMOCMWebhookEvent(webhookURL string, event *IBMOCMEvent) (*IBMOCMWebho
 
 	req, err := retryablehttp.NewRequest(http.MethodPost, webhookURL, bytes.NewBuffer(payload))
 	if err != nil {
-		log.Errorf("failed to create IBM OCM request: %v", err)
+		log.Errorf("logging: failed to create webhook request: %v", err)
 		return nil, err
 	}
 
@@ -274,26 +273,24 @@ func sendIBMOCMWebhookEvent(webhookURL string, event *IBMOCMEvent) (*IBMOCMWebho
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Errorf("failed to send event to IBM OCM: %v", err)
+		log.Errorf("logging: failed to send event to webhook: %v", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		log.Errorf("logging: webhook returned status code %d", resp.StatusCode)
 		return nil, fmt.Errorf("IBM OCM webhook returned status code %d", resp.StatusCode)
 	}
 
 	var ocmResp IBMOCMWebhookResponse
 	if err := json.NewDecoder(resp.Body).Decode(&ocmResp); err != nil {
 		// Some webhooks may not return JSON, so we'll just log success
-		log.Infof("IBM OCM event sent successfully to %s", webhookURL)
+		log.Infof("logging: event sent successfully for dedupKey: %s, eventID: %s", ocmResp.DeduplicationKey, ocmResp.EventID)
 		return &IBMOCMWebhookResponse{
 			DeduplicationKey: "unknown",
 			EventID:          "unknown",
 		}, nil
 	}
-
-	log.Infof("IBM OCM event sent - deduplicationKey: %s, eventID: %s",
-		ocmResp.DeduplicationKey, ocmResp.EventID)
 	return &ocmResp, nil
 }

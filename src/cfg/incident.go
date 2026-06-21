@@ -242,6 +242,14 @@ func NewIncident(component, alias, msg, desc, priority string) Incident {
 func CreateIncident(component, alias, msg, desc, priority string) {
 	Alert(fmt.Sprintf("report incident as pager escalation, component %s, alias %s, message %s, description %s",
 		component, alias, msg, desc))
+
+	// Debug: Log which alerting systems are configured
+	pdKey := GetConfig().PagerDutyConfig.IntegrationKey
+	ibmWebhook := GetConfig().IBMOCMConfig.WebhookURL
+
+	log.Infof("Incident creation debug - PagerDuty configured: %t, IBM OCM configured: %t",
+		pdKey != "", ibmWebhook != "")
+
 	genieKey := GetConfig().OpsGenieConfig.AlertKey
 	if genieKey != "" {
 		err := CreateOpsGenieAlert(NewIncident(component, alias, msg, desc, priority), genieKey)
@@ -250,16 +258,21 @@ func CreateIncident(component, alias, msg, desc, priority string) {
 		}
 	}
 
-	if GetConfig().PagerDutyConfig.IntegrationKey != "" {
-		err := CreatePDIncident(component, alias, msg, GetConfig().PagerDutyConfig.IntegrationKey)
+	if pdKey != "" {
+		err := CreatePDIncident(component, alias, msg, pdKey)
 		if err != nil {
 			Alert(fmt.Sprintf("from %s PagerDuty report incident error %v", component, err))
 		}
 	}
 
-	if GetConfig().IBMOCMConfig.WebhookURL != "" {
+	if ibmWebhook != "" {
 		cfg := GetConfig().IBMOCMConfig
-		err := CreateIBMOCMIncident(component, alias, msg, cfg.WebhookURL, cfg.APIBaseURL, cfg.APIUser, cfg.APIPassword)
+		// Get cluster name from configuration (ClusterName takes precedence over Name)
+		clusterName := GetConfig().Name
+		if clusterName == "" {
+			clusterName = GetConfig().ClusterName
+		}
+		err := CreateIBMOCMIncident(component, alias, msg, clusterName, cfg.WebhookURL, cfg.APIBaseURL, cfg.APIUser, cfg.APIPassword)
 		if err != nil {
 			Alert(fmt.Sprintf("from %s IBM OCM report incident error %v", component, err))
 		}
@@ -296,8 +309,8 @@ func RemoveIncident(component string) {
 			// record.requestID contains the deduplicationKey, record.alertID contains the eventID
 			err := ResolveIBMOCMIncident(component, record.requestID, record.alertID, cfg.APIBaseURL, cfg.APIUser, cfg.APIPassword)
 			if err != nil {
-				log.Errorf("Failed to resolve IBM OCM incident for component %s (deduplicationKey: %s, eventID: %s): %v",
-					component, record.requestID, record.alertID, err)
+				log.Errorf("logging: failed to resolve incident for component %s: %v, dedupKey: %s, eventID: %s",
+					component, err, record.requestID, record.alertID)
 			}
 		}
 	}
