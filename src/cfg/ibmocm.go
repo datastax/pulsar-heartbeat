@@ -89,6 +89,12 @@ func createRetryableHTTPClient() *retryablehttp.Client {
 	return client
 }
 
+// createBasicAuthHeader creates a Basic Authentication header value
+func createBasicAuthHeader(username, password string) string {
+	auth := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
+	return "Basic " + auth
+}
+
 // CreateIBMOCMIncident creates an IBM OCM incident via webhook
 func CreateIBMOCMIncident(component, alias, msg, clusterName, webhookURL, apiBaseURL, apiUser, apiPassword string) error {
 	if webhookURL == "" {
@@ -151,16 +157,16 @@ func ResolveIBMOCMIncident(component, dedupKey, eventID, apiBaseURL, apiUser, ap
 	}
 
 	if incidentUUID == "" {
-		return fmt.Errorf("logging: no incident UUID found for component: %s", component)
+		return fmt.Errorf("no incident UUID found for component: %s", component)
 	}
 
 	// Step 2: Resolve the incident using Incident Management API
 	err = resolveIBMOCMIncidentByUUID(incidentUUID, apiBaseURL, apiUser, apiPassword)
 	if err != nil {
-		log.Errorf("logging: failed to resolve incident %s for component %s: %v, dedupKey: %s, eventID: %s, incidentId: %s", component, err, dedupKey, eventID, incidentUUID)
+		log.Errorf("logging: failed to resolve incident for component %s: %v, dedupKey: %s, eventID: %s, incidentId: %s", component, err, dedupKey, eventID, incidentUUID)
 		return err
 	}
-	
+
 	log.Infof("logging: incident resolved for component: %s, dedupKey: %s, eventID: %s, incidentId: %s", component, dedupKey, eventID, incidentUUID)
 	return nil
 }
@@ -180,8 +186,7 @@ func getIBMOCMIncidentUUID(dedupKey, eventID, apiBaseURL, apiUser, apiPassword s
 	}
 
 	// Set Basic Auth header
-	auth := base64.StdEncoding.EncodeToString([]byte(apiUser + ":" + apiPassword))
-	req.Header.Set("Authorization", "Basic "+auth)
+	req.Header.Set("Authorization", createBasicAuthHeader(apiUser, apiPassword))
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := client.Do(req)
