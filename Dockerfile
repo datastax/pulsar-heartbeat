@@ -11,7 +11,7 @@ RUN git clone https://github.com/rootless-containers/PRoot.git \
 
 FROM golang:1.24-alpine AS runc
 RUN apk add --no-cache git g++ linux-headers
-RUN go install github.com/opencontainers/runc@latest
+RUN go install github.com/opencontainers/runc@v1.1.12
 
 #
 # build stage
