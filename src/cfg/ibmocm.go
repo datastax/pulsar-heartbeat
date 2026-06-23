@@ -235,8 +235,7 @@ func resolveIBMOCMIncidentByUUID(incidentUUID, apiBaseURL, apiUser, apiPassword 
 	}
 
 	// Set Basic Auth header
-	auth := base64.StdEncoding.EncodeToString([]byte(apiUser + ":" + apiPassword))
-	req.Header.Set("Authorization", "Basic "+auth)
+	req.Header.Set("Authorization", createBasicAuthHeader(apiUser, apiPassword))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
