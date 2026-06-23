@@ -57,6 +57,9 @@ const (
 	// BookkeeperSts is bookkeeper sts name
 	BookkeeperSts = "bookkeeper"
 
+	// BookkeeperSts2 is the alternative bookkeeper sts name used in some deployments
+	BookkeeperSts2 = "bookkeeper2"
+
 	// BrokerDeployment is the broker deployment name
 	BrokerDeployment = "broker"
 
@@ -228,7 +231,16 @@ func (c *Client) UpdateReplicas(namespace string) error {
 	if len(bk.Items) > 0 {
 		c.Bookkeeper.Replicas = *(bk.Items[0]).Spec.Replicas
 	} else {
-		c.Bookkeeper.Replicas = 0
+		// Try bookkeeper2 as fallback for clusters using alternative naming
+		bk2, err := c.getStatefulSets(namespace, BookkeeperSts2)
+		if err != nil {
+			return err
+		}
+		if len(bk2.Items) > 0 {
+			c.Bookkeeper.Replicas = *(bk2.Items[0]).Spec.Replicas
+		} else {
+			c.Bookkeeper.Replicas = 0
+		}
 	}
 
 	return nil
@@ -247,6 +259,15 @@ func (c *Client) WatchPods(namespace string) error {
 		c.Bookkeeper.Instances = int32(counts)
 	} else {
 		return err
+	}
+	
+	// If no bookkeeper pods found, try bookkeeper2 as fallback
+	if c.Bookkeeper.Instances == 0 && c.Bookkeeper.Replicas > 0 {
+		if counts, err := c.runningPodCounts(namespace, BookkeeperSts2); err == nil {
+			c.Bookkeeper.Instances = int32(counts)
+		} else {
+			return err
+		}
 	}
 
 	if c.Broker.Replicas > 0 {
