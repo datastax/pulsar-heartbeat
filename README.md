@@ -23,6 +23,8 @@ Here is a list of features that Pulsar Heartbeat supports.
 - [x] monitor individual Pulsar broker's health
 - [ ] Pulsar function trigger over HTTP interface
 - [x] incident alert with OpsGenie with automatic alert clear and deduplication
+- [x] incident alert with PagerDuty with automatic alert clear and deduplication
+- [x] incident alert with IBM OCM (Operations Center Management) via webhook
 - [x] customer configurable alert threshold and probe test interval
 - [x] tracking analytics and usage
 - [x] dead man's snitch heartbeat monitor with OpsGenie
@@ -94,6 +96,39 @@ $ ./scripts/ci.sh
 
 This command runs a multi stage build to produce a docker image.
 ```
+
+## Incident Management Integration
+
+Pulsar Heartbeat supports multiple incident management platforms for alerting and escalation:
+
+### OpsGenie
+Configure OpsGenie integration in your configuration file:
+```yaml
+opsGenieConfig:
+  intervalSeconds: 180
+  heartbeatKey: "your-opsgenie-heartbeat-key"
+  alertKey: "your-opsgenie-alert-key"
+```
+
+### PagerDuty
+Configure PagerDuty integration via environment variable:
+```bash
+export PAGER_DUTY_INTEGRATION_KEY="your-pagerduty-integration-key"
+```
+
+### IBM OCM (Operations Center Management)
+Configure IBM OCM integration via environment variables:
+```bash
+export IBM_OCM_WEBHOOK_URL="https://your-ibm-ocm-webhook-url"
+export IBM_OCM_API_BASE_URL="https://console.oncallmanager.ibm.com"
+export IBM_OCM_API_USER="your-api-username"
+export IBM_OCM_API_PASSWORD="your-api-password"
+```
+
+**Note:** For incident resolution, IBM OCM requires API credentials (`IBM_OCM_API_BASE_URL`, `IBM_OCM_API_USER`, `IBM_OCM_API_PASSWORD`). If only the webhook URL is provided, incidents will be created but not automatically resolved.
+
+**Note:** You can enable multiple incident management platforms simultaneously. Pulsar Heartbeat will send alerts to all configured platforms and automatically resolve incidents when issues are cleared.
+
 $ make
 ```
 

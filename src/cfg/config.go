@@ -29,7 +29,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
-
+	"fmt"
+	"net/url"
 	"golang.org/x/oauth2/clientcredentials"
 
 	"github.com/datastax/pulsar-heartbeat/src/util"
@@ -63,6 +64,14 @@ type OpsGenieCfg struct {
 // PagerDutyCfg is opsGenie configuration
 type PagerDutyCfg struct {
 	IntegrationKey string `json:"integrationKey"` // IntegrationKey can be overridden with PAGER_DUTY_INTEGRATION_KEY env var
+}
+
+// IBMOCMCfg is IBM Operations Center Management configuration
+type IBMOCMCfg struct {
+	WebhookURL  string `json:"webhookUrl"`  // WebhookURL can be overridden with IBM_OCM_WEBHOOK_URL env var
+	APIBaseURL  string `json:"apiBaseUrl"`  // APIBaseURL can be overridden with IBM_OCM_API_BASE_URL env var
+	APIUser     string `json:"apiUser"`     // APIUser can be overridden with IBM_OCM_API_USER env var
+	APIPassword string `json:"apiPassword"` // APIPassword can be overridden with IBM_OCM_API_PASSWORD env var
 }
 
 // AnalyticsCfg is analytics usage and statistucs tracking configuration
@@ -184,6 +193,7 @@ type Configuration struct {
 	SlackConfig       SlackCfg           `json:"slackConfig"`
 	OpsGenieConfig    OpsGenieCfg        `json:"opsGenieConfig"`
 	PagerDutyConfig   PagerDutyCfg       `json:"pagerDutyConfig"`
+	IBMOCMConfig      IBMOCMCfg          `json:"ibmOCMConfig"`
 	PulsarAdminConfig PulsarAdminRESTCfg `json:"pulsarAdminRestConfig"`
 	PulsarTopicConfig []TopicCfg         `json:"pulsarTopicConfig"`
 	SitesConfig       SitesCfg           `json:"sitesConfig"`
@@ -200,8 +210,18 @@ func (c *Configuration) Init() {
 
 	// env overrides for certain config fields
 	c.PagerDutyConfig.IntegrationKey = util.FirstNonEmptyString(os.Getenv("PAGER_DUTY_INTEGRATION_KEY"), c.PagerDutyConfig.IntegrationKey)
+	c.IBMOCMConfig.WebhookURL = util.FirstNonEmptyString(os.Getenv("IBM_OCM_WEBHOOK_URL"), c.IBMOCMConfig.WebhookURL)
+	c.IBMOCMConfig.APIBaseURL = util.FirstNonEmptyString(os.Getenv("IBM_OCM_API_BASE_URL"), c.IBMOCMConfig.APIBaseURL)
+	c.IBMOCMConfig.APIUser = util.FirstNonEmptyString(os.Getenv("IBM_OCM_API_USER"), c.IBMOCMConfig.APIUser)
+	c.IBMOCMConfig.APIPassword = util.FirstNonEmptyString(os.Getenv("IBM_OCM_API_PASSWORD"), c.IBMOCMConfig.APIPassword)
 	c.SlackConfig.AlertURL = util.FirstNonEmptyString(os.Getenv("SLACK_ALERT_URL"), c.SlackConfig.AlertURL)
 
+    // Validate IBM OCM webhook URL if configured
+	if c.IBMOCMConfig.WebhookURL != "" {
+		if err := validateWebhookURL(c.IBMOCMConfig.WebhookURL); err != nil {
+			log.Errorf("Invalid IBM OCM webhook URL in configuration: %v", err)
+		}
+	}
 	if c.TokenOAuthConfig != nil {
 		tokenSrc := c.TokenOAuthConfig.TokenSource(context.Background())
 		c.tokenFunc = func() (string, error) {
@@ -226,6 +246,34 @@ func (c *Configuration) Init() {
 			return c.Token, nil
 		}
 	}
+}
+
+// validateWebhookURL validates the webhook URL format and security
+func validateWebhookURL(webhookURL string) error {
+	if webhookURL == "" {
+		return nil // empty is valid (feature disabled)
+	}
+
+	// Validate URL format first
+	parsedURL, err := url.Parse(webhookURL)
+	if err != nil {
+		return fmt.Errorf("invalid webhook URL format: %v", err)
+	}
+
+	// Ensure host is present
+	if parsedURL.Host == "" {
+		return fmt.Errorf("webhook URL must include a valid host")
+	}
+
+	// Enforce HTTPS for security (except localhost/127.0.0.1 for testing)
+	isLocalhost := strings.HasPrefix(parsedURL.Host, "localhost:") ||
+		strings.HasPrefix(parsedURL.Host, "127.0.0.1:")
+
+	if !strings.HasPrefix(webhookURL, "https://") && !isLocalhost {
+		return fmt.Errorf("webhook URL must use HTTPS, got: %s", webhookURL)
+	}
+
+	return nil
 }
 
 func (c *Configuration) TokenSupplier() func() (string, error) {
@@ -281,6 +329,18 @@ func logConfig(c Configuration) {
 	if c.PagerDutyConfig.IntegrationKey != "" {
 		c.PagerDutyConfig.IntegrationKey = hideSecret
 	}
+	if c.IBMOCMConfig.WebhookURL != "" {
+		c.IBMOCMConfig.WebhookURL = hideSecret
+	}
+	if c.IBMOCMConfig.APIBaseURL != "" {
+        c.IBMOCMConfig.APIBaseURL = hideSecret
+}
+	if c.IBMOCMConfig.APIUser != "" {
+		c.IBMOCMConfig.APIUser = hideSecret
+	}
+	if c.IBMOCMConfig.APIPassword != "" {
+		c.IBMOCMConfig.APIPassword = hideSecret
+	}	
 	if c.SlackConfig.AlertURL != "" {
 		c.SlackConfig.AlertURL = hideSecret
 	}

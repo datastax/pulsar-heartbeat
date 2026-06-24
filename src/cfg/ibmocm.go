@@ -1,0 +1,300 @@
+//
+//  Copyright (c) 2021 Datastax, Inc.
+//
+//  Licensed to the Apache Software Foundation (ASF) under one
+//  or more contributor license agreements.  See the NOTICE file
+//  distributed with this work for additional information
+//  regarding copyright ownership.  The ASF licenses this file
+//  to you under the Apache License, Version 2.0 (the
+//  "License"); you may not use this file except in compliance
+//  with the License.  You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing,
+//  software distributed under the License is distributed on an
+//  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+//  KIND, either express or implied.  See the License for the
+//  specific language governing permissions and limitations
+//  under the License.
+//
+
+package cfg
+
+import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+
+	log "github.com/apex/log"
+	"github.com/hashicorp/go-retryablehttp"
+)
+
+const (
+	ocmTrigger     = "trigger"
+	ocmAcknowledge = "acknowledge"
+	ocmResolve     = "resolve"
+)
+
+// IBMOCMEvent represents the event payload for IBM OCM webhook
+type IBMOCMEvent struct {
+	Action      string    `json:"action"` // trigger, acknowledge, or resolve
+	Summary     string    `json:"summary"`
+	Source      string    `json:"source"`
+	Severity    string    `json:"severity"`
+	Component   string    `json:"component"`
+	Description string    `json:"description"`
+	Timestamp   time.Time `json:"timestamp"`
+	DedupKey    string    `json:"dedup_key"`
+}
+
+// IBMOCMWebhookResponse represents the response from IBM OCM webhook
+type IBMOCMWebhookResponse struct {
+	DeduplicationKey string `json:"deduplicationKey"`  // IBM OCM's generated deduplication key
+	EventID          string `json:"eventid"`           // IBM OCM's event ID
+	Status           string `json:"status,omitempty"`  // Optional status field
+	Message          string `json:"message,omitempty"` // Optional message field
+	Error            string `json:"error,omitempty"`   // error message if any
+}
+
+// IBMOCMEventDetails represents the event details from Events API
+type IBMOCMEventDetails struct {
+	DeduplicationKey string `json:"deduplicationKey"`
+	InstanceUUID     string `json:"instanceUuid"`
+	EventID          string `json:"eventid"`
+	IncidentUUID     string `json:"incidentUuid"` // This is what we need for resolution
+	EventState       string `json:"eventState"`
+	Summary          string `json:"summary"`
+	Severity         int    `json:"severity"`
+}
+
+// IBMOCMIncidentUpdate represents the payload for updating an incident
+type IBMOCMIncidentUpdate struct {
+	State string `json:"state"` // "resolved", "acknowledged", etc.
+}
+
+// createRetryableHTTPClient creates a configured HTTP client with retry logic
+func createRetryableHTTPClient() *retryablehttp.Client {
+	client := retryablehttp.NewClient()
+	client.HTTPClient.Timeout = 10 * time.Second
+	client.RetryWaitMin = 2 * time.Second
+	client.RetryWaitMax = 30 * time.Second
+	client.RetryMax = 2
+	return client
+}
+
+// createBasicAuthHeader creates a Basic Authentication header value
+func createBasicAuthHeader(username, password string) string {
+	auth := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
+	return "Basic " + auth
+}
+
+// CreateIBMOCMIncident creates an IBM OCM incident via webhook
+func CreateIBMOCMIncident(component, alias, msg, clusterName, webhookURL, apiBaseURL, apiUser, apiPassword string) error {
+	if webhookURL == "" {
+		log.Infof("logging: webhookURL not configured, skipping incident creation for %s, component: %s, cluster: %s", msg, component, clusterName)
+		return nil
+	}
+
+	event := IBMOCMEvent{
+		Action:      ocmTrigger,
+		Summary:     clusterName + ": " + component + ": " + msg,
+		Source:      "pulsar-heartbeat",
+		Severity:    "critical",
+		Component:   component,
+		Description: msg,
+		Timestamp:   time.Now(),
+		DedupKey:    alias,
+	}
+
+	resp, err := sendIBMOCMWebhookEvent(webhookURL, &event)
+	if err != nil {
+		return err
+	}
+
+	if resp == nil {
+		return errors.New("empty IBM OCM webhook response")
+	}
+
+	// Store the deduplicationKey and eventID for later resolution
+	// We'll need these to query the Events API and get the incidentUuid
+	incident := incidentRecord{
+		requestID: resp.DeduplicationKey, // IBM OCM's dedup key
+		alertID:   resp.EventID,          // IBM OCM's event ID (needed for Events API query)
+		createdAt: time.Now(),
+	}
+
+	incidentsLock.Lock()
+	defer incidentsLock.Unlock()
+	incidents[component] = incident
+
+	log.Infof("logging: incident created - component: %s, dedupKey: %s, eventID: %s",
+		component, resp.DeduplicationKey, resp.EventID)
+	return nil
+}
+
+// ResolveIBMOCMIncident resolves an IBM OCM incident using the 3-step process:
+// 1. We have deduplicationKey and eventID from incident creation
+// 2. Query Events API to get incidentUuid
+// 3. Call Incident Management API to resolve the incident
+func ResolveIBMOCMIncident(component, dedupKey, eventID, apiBaseURL, apiUser, apiPassword string) error {
+	if apiBaseURL == "" || apiUser == "" || apiPassword == "" {
+		log.Warnf("logging: API credentials not configured, skipping resolution for component: %s, dedupKey: %s, eventID: %s", component, dedupKey, eventID)
+		return nil
+	}
+
+	// Step 1: Query Events API to get incidentUuid
+	incidentUUID, err := getIBMOCMIncidentUUID(dedupKey, eventID, apiBaseURL, apiUser, apiPassword)
+	if err != nil {
+		log.Errorf("logging: failed to get incident UUID for component %s: %v, dedupKey: %s, eventID: %s", component, err, dedupKey, eventID)
+		return err
+	}
+
+	if incidentUUID == "" {
+		return fmt.Errorf("no incident UUID found for component: %s", component)
+	}
+
+	// Step 2: Resolve the incident using Incident Management API
+	err = resolveIBMOCMIncidentByUUID(incidentUUID, apiBaseURL, apiUser, apiPassword)
+	if err != nil {
+		log.Errorf("logging: failed to resolve incident for component %s: %v, dedupKey: %s, eventID: %s, incidentId: %s", component, err, dedupKey, eventID, incidentUUID)
+		return err
+	}
+
+	log.Infof("logging: incident resolved for component: %s, dedupKey: %s, eventID: %s, incidentId: %s", component, dedupKey, eventID, incidentUUID)
+	return nil
+}
+
+// getIBMOCMIncidentUUID queries the Events API to get the incident UUID
+func getIBMOCMIncidentUUID(dedupKey, eventID, apiBaseURL, apiUser, apiPassword string) (string, error) {
+	// Build the Events API URL with query parameters
+	// URL encode the parameters to handle special characters
+	eventsURL := fmt.Sprintf("%s/api/events/v1?deduplicationKey=%s&eventid=%s",
+		strings.TrimSuffix(apiBaseURL, "/"), url.QueryEscape(dedupKey), url.QueryEscape(eventID))
+
+	client := createRetryableHTTPClient()
+
+	req, err := retryablehttp.NewRequest(http.MethodGet, eventsURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create Events API request: %v", err)
+	}
+
+	// Set Basic Auth header
+	req.Header.Set("Authorization", createBasicAuthHeader(apiUser, apiPassword))
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to query Events API: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("Events API returned status code %d", resp.StatusCode)
+	}
+
+	var eventDetails IBMOCMEventDetails
+	if err := json.NewDecoder(resp.Body).Decode(&eventDetails); err != nil {
+		return "", fmt.Errorf("failed to decode Events API response: %v", err)
+	}
+
+	if eventDetails.IncidentUUID == "" {
+		return "", fmt.Errorf("no incidentUuid in Events API response")
+	}
+
+	log.Infof("logging: retrieved incident UUID from Events API for dedupKey: %s, eventID: %s, incidentId: %s", dedupKey, eventID, eventDetails.IncidentUUID)
+	return eventDetails.IncidentUUID, nil
+}
+
+// resolveIBMOCMIncidentByUUID resolves an incident using the Incident Management API
+func resolveIBMOCMIncidentByUUID(incidentUUID, apiBaseURL, apiUser, apiPassword string) error {
+	// Build the Incident Management API URL
+	incidentURL := fmt.Sprintf("%s/api/incimgmt/v1/%s",
+		strings.TrimSuffix(apiBaseURL, "/"), incidentUUID)
+
+	updatePayload := IBMOCMIncidentUpdate{
+		State: "resolved",
+	}
+
+	payload, err := json.Marshal(updatePayload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal incident update: %v", err)
+	}
+
+	client := createRetryableHTTPClient()
+
+	req, err := retryablehttp.NewRequest(http.MethodPost, incidentURL, bytes.NewBuffer(payload))
+	if err != nil {
+		return fmt.Errorf("failed to create Incident Management API request: %v", err)
+	}
+
+	// Set Basic Auth header
+	req.Header.Set("Authorization", createBasicAuthHeader(apiUser, apiPassword))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to call Incident Management API: %v for incidentId: %s", err, incidentUUID)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("Incident Management API returned status code %d for incidentId: %s", resp.StatusCode, incidentUUID)
+	}
+
+	log.Infof("logging: successfully resolved incident via Incident Management API for incidentId: %s", incidentUUID)
+	return nil
+}
+
+// sendIBMOCMWebhookEvent sends an event to IBM OCM webhook
+func sendIBMOCMWebhookEvent(webhookURL string, event *IBMOCMEvent) (*IBMOCMWebhookResponse, error) {
+	if webhookURL == "" {
+		return nil, nil
+	}
+
+	payload, err := json.Marshal(event)
+	if err != nil {
+		log.Errorf("logging: failed to marshal event: %v", err)
+		return nil, err
+	}
+
+	client := createRetryableHTTPClient()
+
+	req, err := retryablehttp.NewRequest(http.MethodPost, webhookURL, bytes.NewBuffer(payload))
+	if err != nil {
+		log.Errorf("logging: failed to create webhook request: %v", err)
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorf("logging: failed to send event to webhook: %v", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		log.Errorf("logging: webhook returned status code %d", resp.StatusCode)
+		return nil, fmt.Errorf("IBM OCM webhook returned status code %d", resp.StatusCode)
+	}
+
+	var ocmResp IBMOCMWebhookResponse
+	if err := json.NewDecoder(resp.Body).Decode(&ocmResp); err != nil {
+		// Some webhooks may not return JSON, so we'll just log success
+		log.Infof("logging: event sent successfully for dedupKey: %s, eventID: %s", ocmResp.DeduplicationKey, ocmResp.EventID)
+		return &IBMOCMWebhookResponse{
+			DeduplicationKey: "unknown",
+			EventID:          "unknown",
+		}, nil
+	}
+	return &ocmResp, nil
+}
