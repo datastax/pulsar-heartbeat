@@ -221,7 +221,9 @@ func TestWsLatency(config WsConfig) {
 	if err != nil {
 		errMsg := fmt.Sprintf("cluster %s, %s websocket latency test Pulsar error: %v", config.Cluster, config.Name, err)
 		log.Errorf(errMsg)
-		ReportIncident(config.Name, config.Cluster, "websocket persisted latency test failure", errMsg, &config.AlertPolicy)
+		if !config.SuppressAlertsOnTopicNotFound {
+			ReportIncident(config.Name, config.Cluster, "websocket persisted latency test failure", errMsg, &config.AlertPolicy)
+		}
 	} else if result.Latency > expectedLatency {
 		stdVerdict.Add(float64(result.Latency.Milliseconds()))
 		errMsg := fmt.Sprintf("cluster %s, %s websocket test message latency %v over the budget %v",

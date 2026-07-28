@@ -149,6 +149,10 @@ type WsConfig struct {
 	Subscription    string         `json:"subscription"`
 	URLQueryParams  string         `json:"urlQueryParams"`
 	AlertPolicy     AlertPolicyCfg `json:"AlertPolicy"`
+	// SuppressAlertsOnTopicNotFound when true, logs the failure but does not
+	// raise an incident. Use this for transient or test topics that may not
+	// always exist (e.g. incluster-websocket-latency-test in dev clusters).
+	SuppressAlertsOnTopicNotFound bool `json:"suppressAlertsOnTopicNotFound"`
 }
 
 // K8sClusterCfg is configuration to monitor kubernete cluster
