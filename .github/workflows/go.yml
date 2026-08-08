@@ -79,7 +79,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: build-binary
         run: |
-          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} OUTPUT_FILE="pulsar-heartbeat-${{ matrix.os }}-${{ matrix.arch }}"
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} OUTPUT_FILE="pulsar-heartbeat-${{ matrix.os }}-${{ matrix.arch }}" make build
 
   docker:
     name: docker-build
