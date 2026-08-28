@@ -32,15 +32,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	log "github.com/apex/log"
 	apps_v1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/apps/v1"
 	batch_v1 "k8s.io/api/batch/v1"
 	core_v1 "k8s.io/api/core/v1"
 	ext_v1beta1 "k8s.io/api/extensions/v1beta1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	appslisters "k8s.io/client-go/listers/apps/v1"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -71,6 +75,11 @@ const (
 
 	// FunctionWorkerDeployment is the function worker deployment name
 	FunctionWorkerDeployment = "functionWorker"
+	informerResyncPeriod = 5 * time.Minute
+
+	// informerSyncTimeout bounds how long we wait for the initial informer
+	// LIST+WATCH to populate the local cache before giving up.
+	informerSyncTimeout = 30 * time.Second
 )
 
 // ClusterStatusCode is the high level health of cluster status
@@ -88,8 +97,14 @@ const (
 )
 
 // Client is the k8s client object
+//
+// Pod, Deployment, and StatefulSet reads are served from local informer
+// caches rather than the API server. The informers perform one LIST+WATCH
+// per resource type at startup and are kept current by the watch stream, so
+// repeated polling (see cfg.MonitorK8sPulsarCluster) no longer generates a
+// LIST call to the API server on every tick.
 type Client struct {
-	Clientset        *kubernetes.Clientset
+	Clientset        kubernetes.Interface
 	Metrics          *metrics.Clientset
 	ClusterName      string
 	DefaultNamespace string
@@ -100,6 +115,12 @@ type Client struct {
 	Broker           Deployment
 	Proxy            Deployment
 	FunctionWorker   StatefulSet
+
+	informerFactory  informers.SharedInformerFactory
+	podLister        corelisters.PodLister
+	deploymentLister appslisters.DeploymentLister
+	stsLister        appslisters.StatefulSetLister
+	stopCh           chan struct{}
 }
 
 // ClusterStatus is the health status of the cluster and its components
@@ -152,21 +173,68 @@ func GetK8sClient(pulsarNamespace string) (*Client, error) {
 		return nil, err
 	}
 
-	metrics, err := metrics.NewForConfig(config)
+	metricsClientset, err := metrics.NewForConfig(config)
 	if err != nil {
 		return nil, err
 	}
 
-	client := Client{
-		Clientset: clientset,
-		Metrics:   metrics,
-	}
-
-	err = client.UpdateReplicas(pulsarNamespace)
+	client, err := newClient(clientset, metricsClientset, pulsarNamespace)
 	if err != nil {
 		return nil, err
 	}
-	return &client, nil
+
+	if err = client.UpdateReplicas(pulsarNamespace); err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+func newClient(clientset kubernetes.Interface, metricsClientset *metrics.Clientset, namespace string) (*Client, error) {
+	factory := informers.NewSharedInformerFactoryWithOptions(clientset, informerResyncPeriod, informers.WithNamespace(namespace))
+
+	podInformer := factory.Core().V1().Pods()
+	deploymentInformer := factory.Apps().V1().Deployments()
+	stsInformer := factory.Apps().V1().StatefulSets()
+	podInformer.Informer()
+	deploymentInformer.Informer()
+	stsInformer.Informer()
+
+	stopCh := make(chan struct{})
+	factory.Start(stopCh)
+
+	syncCtx, cancel := context.WithTimeout(context.Background(), informerSyncTimeout)
+	defer cancel()
+
+	synced := factory.WaitForCacheSync(syncCtx.Done())
+	for informerType, ok := range synced {
+		if !ok {
+			close(stopCh)
+			return nil, fmt.Errorf("timed out waiting for informer cache to sync for %v", informerType)
+		}
+	}
+
+	return &Client{
+		Clientset:        clientset,
+		Metrics:          metricsClientset,
+		DefaultNamespace: namespace,
+		informerFactory:  factory,
+		podLister:        podInformer.Lister(),
+		deploymentLister: deploymentInformer.Lister(),
+		stsLister:        stsInformer.Lister(),
+		stopCh:           stopCh,
+	}, nil
+}
+
+func (c *Client) Close() {
+	if c.stopCh == nil {
+		return
+	}
+	select {
+	case <-c.stopCh:
+		// already closed
+	default:
+		close(c.stopCh)
+	}
 }
 
 // UpdateReplicas updates the replicas for deployments and sts
@@ -175,20 +243,20 @@ func (c *Client) UpdateReplicas(namespace string) error {
 	if err != nil {
 		return err
 	}
-	if len(brokersts.Items) == 0 {
+	if len(brokersts) == 0 {
 		c.BrokerSts.Replicas = 0
 	} else {
-		c.BrokerSts.Replicas = *(brokersts.Items[0]).Spec.Replicas
+		c.BrokerSts.Replicas = *brokersts[0].Spec.Replicas
 	}
 
 	broker, err := c.getDeployments(namespace, BrokerDeployment)
 	if err != nil {
 		return err
 	}
-	if len(broker.Items) == 0 {
+	if len(broker) == 0 {
 		c.Broker.Replicas = 0
 	} else {
-		c.Broker.Replicas = *(broker.Items[0]).Spec.Replicas
+		c.Broker.Replicas = *broker[0].Spec.Replicas
 	}
 
 	if c.Broker.Replicas+c.BrokerSts.Replicas == 0 {
@@ -197,10 +265,10 @@ func (c *Client) UpdateReplicas(namespace string) error {
 		if err != nil {
 			return err
 		}
-		if len(brokersts.Items) == 0 {
+		if len(brokersts) == 0 {
 			c.BrokerSts.Replicas = 0
 		} else {
-			c.BrokerSts.Replicas = *(brokersts.Items[0]).Spec.Replicas
+			c.BrokerSts.Replicas = *brokersts[0].Spec.Replicas
 		}
 	}
 
@@ -208,18 +276,18 @@ func (c *Client) UpdateReplicas(namespace string) error {
 	if err != nil {
 		return err
 	}
-	if len(proxy.Items) == 0 {
+	if len(proxy) == 0 {
 		c.Proxy.Replicas = 0
 	} else {
-		c.Proxy.Replicas = *(proxy.Items[0]).Spec.Replicas
+		c.Proxy.Replicas = *proxy[0].Spec.Replicas
 	}
 
 	zk, err := c.getStatefulSets(namespace, ZookeeperSts)
 	if err != nil {
 		return err
 	}
-	if len(zk.Items) > 0 {
-		c.Zookeeper.Replicas = *(zk.Items[0]).Spec.Replicas
+	if len(zk) > 0 {
+		c.Zookeeper.Replicas = *zk[0].Spec.Replicas
 	} else {
 		c.Zookeeper.Replicas = 0
 	}
@@ -228,16 +296,16 @@ func (c *Client) UpdateReplicas(namespace string) error {
 	if err != nil {
 		return err
 	}
-	if len(bk.Items) > 0 {
-		c.Bookkeeper.Replicas = *(bk.Items[0]).Spec.Replicas
+	if len(bk) > 0 {
+		c.Bookkeeper.Replicas = *bk[0].Spec.Replicas
 	} else {
 		// Try bookkeeper2 as fallback for clusters using alternative naming
 		bk2, err := c.getStatefulSets(namespace, BookkeeperSts2)
 		if err != nil {
 			return err
 		}
-		if len(bk2.Items) > 0 {
-			c.Bookkeeper.Replicas = *(bk2.Items[0]).Spec.Replicas
+		if len(bk2) > 0 {
+			c.Bookkeeper.Replicas = *bk2[0].Spec.Replicas
 		} else {
 			c.Bookkeeper.Replicas = 0
 		}
@@ -260,7 +328,7 @@ func (c *Client) WatchPods(namespace string) error {
 	} else {
 		return err
 	}
-	
+
 	// If no bookkeeper pods found, try bookkeeper2 as fallback
 	if c.Bookkeeper.Instances == 0 && c.Bookkeeper.Replicas > 0 {
 		if counts, err := c.runningPodCounts(namespace, BookkeeperSts2); err == nil {
@@ -389,15 +457,14 @@ func (c *Client) WatchPodResource(namespace, component string) error {
 }
 
 func (c *Client) runningPodCounts(namespace, component string) (int, error) {
-	pods, err := c.Clientset.CoreV1().Pods(namespace).List(context.TODO(), meta_v1.ListOptions{
-		LabelSelector: fmt.Sprintf("component=%s", component),
-	})
+	selector := labels.SelectorFromSet(labels.Set{"component": component})
+	pods, err := c.podLister.Pods(namespace).List(selector)
 	if err != nil {
 		return -1, err
 	}
 
 	counts := 0
-	for _, item := range pods.Items {
+	for _, item := range pods {
 		containers := 0
 		readyContainers := 0
 		for _, status := range item.Status.ContainerStatuses {
@@ -434,20 +501,14 @@ func (c *Client) GetNodeResource() {
 	}
 }
 
-func (c *Client) getDeployments(namespace, component string) (*v1.DeploymentList, error) {
-	deploymentsClient := c.Clientset.AppsV1().Deployments(namespace)
-
-	return deploymentsClient.List(context.TODO(), meta_v1.ListOptions{
-		LabelSelector: fmt.Sprintf("component=%s", component),
-	})
+func (c *Client) getDeployments(namespace, component string) ([]*apps_v1.Deployment, error) {
+	selector := labels.SelectorFromSet(labels.Set{"component": component})
+	return c.deploymentLister.Deployments(namespace).List(selector)
 }
 
-func (c *Client) getStatefulSets(namespace, component string) (*v1.StatefulSetList, error) {
-	stsClient := c.Clientset.AppsV1().StatefulSets(namespace)
-
-	return stsClient.List(context.TODO(), meta_v1.ListOptions{
-		LabelSelector: fmt.Sprintf("component=%s", component),
-	})
+func (c *Client) getStatefulSets(namespace, component string) ([]*apps_v1.StatefulSet, error) {
+	selector := labels.SelectorFromSet(labels.Set{"component": component})
+	return c.stsLister.StatefulSets(namespace).List(selector)
 }
 
 // ClusterStatusCodeString is the cluster status code in Kubernetes
