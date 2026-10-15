@@ -390,7 +390,8 @@ func (c *Client) WatchPodResource(namespace, component string) error {
 
 func (c *Client) runningPodCounts(namespace, component string) (int, error) {
 	pods, err := c.Clientset.CoreV1().Pods(namespace).List(context.TODO(), meta_v1.ListOptions{
-		LabelSelector: fmt.Sprintf("component=%s", component),
+		LabelSelector:   fmt.Sprintf("component=%s", component),
+		ResourceVersion: "0", // serve from API server watch cache, not etcd
 	})
 	if err != nil {
 		return -1, err
@@ -438,7 +439,8 @@ func (c *Client) getDeployments(namespace, component string) (*v1.DeploymentList
 	deploymentsClient := c.Clientset.AppsV1().Deployments(namespace)
 
 	return deploymentsClient.List(context.TODO(), meta_v1.ListOptions{
-		LabelSelector: fmt.Sprintf("component=%s", component),
+		LabelSelector:   fmt.Sprintf("component=%s", component),
+		ResourceVersion: "0", // serve from API server watch cache, not etcd
 	})
 }
 
@@ -446,7 +448,8 @@ func (c *Client) getStatefulSets(namespace, component string) (*v1.StatefulSetLi
 	stsClient := c.Clientset.AppsV1().StatefulSets(namespace)
 
 	return stsClient.List(context.TODO(), meta_v1.ListOptions{
-		LabelSelector: fmt.Sprintf("component=%s", component),
+		LabelSelector:   fmt.Sprintf("component=%s", component),
+		ResourceVersion: "0", // serve from API server watch cache, not etcd
 	})
 }
 
