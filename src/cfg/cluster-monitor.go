@@ -31,7 +31,8 @@ import (
 	"github.com/datastax/pulsar-heartbeat/src/util"
 )
 
-const clusterMonInterval = 10 * time.Second
+// defaultClusterMonIntervalSeconds is used when k8sConfig.intervalSeconds is not set
+const defaultClusterMonIntervalSeconds = 10
 
 // ClusterHealth a cluster health struct
 type ClusterHealth struct {
@@ -105,9 +106,10 @@ func MonitorK8sPulsarCluster() error {
 		return err
 	}
 
+	interval := util.TimeDuration(k8sCfg.IntervalSeconds, defaultClusterMonIntervalSeconds, time.Second)
 	go func(client *k8s.Client) {
-		log.Infof("start k8s cluster monitoring ...")
-		ticker := time.NewTicker(clusterMonInterval)
+		log.Infof("start k8s cluster monitoring with interval %v ...", interval)
+		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for {
 			select {

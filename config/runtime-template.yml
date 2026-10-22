@@ -49,6 +49,8 @@ analyticsConfig:
 k8sConfig:
   enabled: false
   pulsarNamespace: default
+  # polling interval for cluster health check, defaults to 10 seconds if unset
+  intervalSeconds: 10
 brokersConfig:
   intervalSeconds: 45
   inclusterRestURL: "http://pulsar-broker:8080"

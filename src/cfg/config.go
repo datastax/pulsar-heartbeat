@@ -160,6 +160,7 @@ type WsConfig struct {
 type K8sClusterCfg struct {
 	Enabled         bool           `json:"enabled"`
 	PulsarNamespace string         `json:"pulsarNamespace"`
+	IntervalSeconds int            `json:"intervalSeconds"`
 	KubeConfigDir   string         `json:"kubeConfigDir"`
 	AlertPolicy     AlertPolicyCfg `json:"AlertPolicy"`
 }
