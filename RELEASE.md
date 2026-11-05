@@ -2,9 +2,9 @@
 
 ## How to build a Docker release image
 
-The Docker release image is built by the automated Docker Hub build process. The build is triggered by Github remote tagging.
+The Docker release image is built and pushed to Quay (`quay.io/datastax/pulsar-heartbeat`) via GitHub Actions workflow (`.github/workflows/release-docker-registry.yml`). The build is triggered whenever a release tag is pushed to GitHub.
 
-Here is an example how to tag and push to `origin` that will automatically trigger a Docker Hub build.
+Here is an example how to tag and push to `origin` that will automatically trigger the release workflow.
 
 ### Tag Requirements
 1. The tag has to conform the regex `^[0-9.]+`. It's recommended to follow major.minor.patch pattern in decimal format.
@@ -29,4 +29,4 @@ A new tag pushed to the main repo (usually `origin`) will trigger a Docker Hub b
     $ git push origin 1.0.0
     ```
 
-4. Wait for the image to show up on dockerhub (https://hub.docker.com/r/datastax/pulsar-heartbeat/tags)
+4. Wait for the GitHub Actions workflow to build and push the image to Quay (https://quay.io/repository/datastax/pulsar-heartbeat)
